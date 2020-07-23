@@ -21,21 +21,41 @@
 
 using namespace std;
 
-class InstructionS{
+class Instruction{
 public:
-    void InitInst(string _res, string _op, string _opType, string _lName, string _rName){
-        res = std::move(_res);
-        op = std::move(_op);
-        opType = std::move(_opType);
-        lName = std::move(_lName);
-        rName = std::move(_rName);
+    Instruction() {
+        instRegex = R"(\%\"(.*)\" = (\w+) (\w+) \%\"(.*)\", \%\"(.*)\")";
+        opRex = R"((\w+)\.(\d+))"
     }
+
+    void InitInst(const string& _inst){
+        smatch resRex;
+        if(!regex_search(_inst, resRex, instRegex)) {
+            cout << "Match inst failed." << endl;
+            return;
+        }
+
+        res = resRex[1];
+        op = resRex[2];
+        opType = resRex[3];
+        lName = resRex[4];
+        rName = resRex[5];
+    }
+
+    string GetString(){
+        return res + " = " + op + " " + opType + " " + lName + ", " + rName;
+    }
+
 private:
-    string res;
+    regex instRegex;
+    regex opRex;
+
     string op;
     string opType;
-    string lName;
-    string rName;
+
+    pair<string, int> res;
+    pair<string, int> lName;
+    pair<string, int> rName;
 };
 
 class Function {
@@ -49,18 +69,32 @@ public:
         return true;
     }
 
+    Instruction GetInst(int _index){
+        return instructions[_index];
+    }
+
+    void InitInsts(unsigned int _len){
+        instructions.resize(_len);
+        instLength = _len;
+    }
+
+    unsigned int GetInstNum() const{
+        return instLength;
+    }
+
 private:
+    unsigned int instLength;
+
     string funcName;
 
-    vector<InstructionS> instructions;
-//    vector<vector<string>> instructions;
+    vector<Instruction> instructions;
 };
 
 class FuncChain {
 public:
     FuncChain() = default;
 
-    unsigned int GetChainLength() {
+    unsigned int GetChainLength() const {
         return length;
     }
 

@@ -82,11 +82,24 @@ void Controller::FunChains() {
             Function thisFunc = thisChain.GetFunction(funcIndex);
             thisFunc.SetFuncName(funPtr.MemberBegin()->value.GetString());
 
+            assert((funPtr.MemberBegin() + 1)->value.IsArray());
 
+            thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
+            cout << "instruction num = " +  to_string(thisFunc.GetInstNum())<< endl;
+            int instNum = 0;
+            for (auto &inst : (funPtr.MemberBegin() + 1)->value.GetArray()){
+                assert(inst.IsObject());
+                Instruction thisInst = thisFunc.GetInst(instNum);
+                thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
+
+                cout << thisInst.GetString() << endl;
+                instNum++;
+            }
+            exit(0);
             funcIndex++;
 
             cout << thisFunc.GetFuncName() << endl;
-            exit(0);
+
             assert(funPtr.IsObject());
 
             pair<string, set<vector<string>>> instructions;
