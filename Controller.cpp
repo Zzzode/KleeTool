@@ -81,6 +81,8 @@ void Controller::FunChains() {
         for (auto &funPtr : funChain.GetArray()) {
             Function thisFunc = thisChain.GetFunction(funcIndex);
             thisFunc.SetFuncName(funPtr.MemberBegin()->value.GetString());
+
+
             funcIndex++;
 
             cout << thisFunc.GetFuncName() << endl;

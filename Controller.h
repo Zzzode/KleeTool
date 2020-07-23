@@ -21,6 +21,22 @@
 
 using namespace std;
 
+class InstructionS{
+public:
+    void InitInst(string _res, string _op, string _opType, string _lName, string _rName){
+        res = std::move(_res);
+        op = std::move(_op);
+        opType = std::move(_opType);
+        lName = std::move(_lName);
+        rName = std::move(_rName);
+    }
+private:
+    string res;
+    string op;
+    string opType;
+    string lName;
+    string rName;
+};
 
 class Function {
 public:
@@ -36,7 +52,8 @@ public:
 private:
     string funcName;
 
-    vector<vector<string>> instructions;
+    vector<InstructionS> instructions;
+//    vector<vector<string>> instructions;
 };
 
 class FuncChain {
