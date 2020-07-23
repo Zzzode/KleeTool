@@ -88,5 +88,5 @@ Mkfile.old
 dkms.conf
 
 # Clion configure files
+.idea/
 build/
-.idea
