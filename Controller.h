@@ -21,34 +21,60 @@
 
 using namespace std;
 
-class Instruction{
+class ArithOp{
 public:
-    Instruction() {
-        instRegex = R"(\%\"(.*)\" = (\w+) (\w+) \%\"(.*)\", \%\"(.*)\")";
-        opRex = R"((\w+)\.(\d+))"
-    }
+    void Init(const smatch& instRexRes){
+        arithOpRex = R"((\w+)\.(\d+))";
 
-    void InitInst(const string& _inst){
-        smatch resRex;
-        if(!regex_search(_inst, resRex, instRegex)) {
-            cout << "Match inst failed." << endl;
-            return;
+        smatch opRexRes;
+        op = instRexRes[2];
+        opType = instRexRes[3];
+        res.first = instRexRes[1];
+        lName.first = instRexRes[4];
+        rName.first = instRexRes[5];
+
+        if (regex_search(res.first, opRexRes, arithOpRex)) {
+            res.first = opRexRes[1];
+            res.second = stoi(opRexRes[2]);
         }
 
-        res = resRex[1];
-        op = resRex[2];
-        opType = resRex[3];
-        lName = resRex[4];
-        rName = resRex[5];
+        if (regex_search(lName.first, opRexRes, arithOpRex)) {
+            lName.first = opRexRes[1];
+            lName.second = stoi(opRexRes[2]);
+        }
+
+        if (regex_search(rName.first, opRexRes, arithOpRex)) {
+            rName.first = opRexRes[1];
+            rName.second = stoi(opRexRes[2]);
+        }
     }
 
-    string GetString(){
-        return res + " = " + op + " " + opType + " " + lName + ", " + rName;
+    string GetString() {
+        string _res;
+        if (res.second == 0)
+            _res += res.first;
+        else
+            _res += res.first + "." + to_string(res.second);
+
+        _res += " = " + op + " " + opType + " ";
+
+        if (lName.second == 0)
+            _res += lName.first;
+        else
+            _res += lName.first + "." + to_string(lName.second);
+
+        _res += ", ";
+
+        if (rName.second == 0)
+            _res += rName.first;
+        else
+            _res += rName.first + "." + to_string(rName.second);
+
+        return _res;
     }
 
 private:
-    regex instRegex;
-    regex opRex;
+    regex arithOpRex;
 
     string op;
     string opType;
@@ -58,27 +84,113 @@ private:
     pair<string, int> rName;
 };
 
+class FuncCall{
+public:
+    void Init(const smatch& instRexRes){
+        ;
+    }
+
+    string GetString() {;}
+
+private:
+    string funcType;
+    string funcName;
+    vector<pair<string, string>> callArgs;
+};
+
+class StoreInst{
+public:
+    void Init(const smatch& instRexRes){
+        ;
+    }
+
+    string GetString(){
+        ;
+    }
+
+private:
+};
+
+class Instruction {
+public:
+    Instruction() {
+        instType = 0;
+        arithOp = new ArithOp;
+        funcCall = new FuncCall;
+        storeInst = new StoreInst;
+
+        arithInstRex = R"(\%\"(.*)\" = (\w+) (\w+) \%\"(.*)\", \%\"(.*)\")";
+        funcCallRex = R"(\%\"(FunctionCall)\" = (call) (i256) @\"(\w+)\"\(((\w+)\s(.*)[,\s]*)*\))";
+        storeRex = R"(store (\w+) %\"(\w+)\", (\w+\**) @\"(\w+)\")";
+    }
+
+    void InitInst(const string &_inst) {
+        smatch instRexRes;
+        if (regex_search(_inst, instRexRes, arithInstRex)) {
+            arithOp->Init(instRexRes);
+            instType = 1;
+        } else if (regex_search(_inst, instRexRes, funcCallRex)){
+            funcCall->Init(instRexRes);
+            instType = 2;
+        } else if (regex_search(_inst, instRexRes, storeRex)){
+            storeInst->Init(instRexRes);
+            instType = 3;
+        }
+    }
+
+    string GetString() const{
+        switch (instType) {
+            case 1: return arithOp->GetString();
+            case 2: return funcCall->GetString();
+            case 3: return storeInst->GetString();
+            default: return "No such inst type!";
+        }
+    }
+
+    string GetType() const {
+        switch (instType) {
+            case 1: return "Arithmetic operation";
+            case 2: return "Function call";
+            case 3: return "Store operation";
+            default: return "Unknown type";
+        }
+    }
+
+private:
+    // 1:arith 2: func call 3: store
+    int instType;
+
+    ArithOp *arithOp;
+    FuncCall *funcCall;
+    StoreInst *storeInst;
+
+private:
+    regex arithInstRex;
+    regex funcCallRex;
+    regex storeRex;
+};
+
 class Function {
 public:
-    Function() = default;
+    Function() : instLength(0) {}
 
     string GetFuncName() { return funcName; }
 
-    bool SetFuncName(string _name){
+    bool SetFuncName(string _name) {
         funcName = std::move(_name);
         return true;
     }
 
-    Instruction GetInst(int _index){
+    Instruction GetInst(int _index) {
         return instructions[_index];
     }
 
-    void InitInsts(unsigned int _len){
+    void InitInsts(unsigned int _len) {
         instructions.resize(_len);
         instLength = _len;
     }
 
-    unsigned int GetInstNum() const{
+    unsigned int GetInstNum() const {
         return instLength;
     }
 
