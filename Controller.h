@@ -23,21 +23,21 @@ using namespace std;
 
 class RegName {
 public:
-    RegName() : count(0) {
-        arithOpRex = R"((\w+)\.(\d+))";
-    }
+    RegName() : count(0) {}
 
-    RegName(string _type, string _name, int _count) {
+    RegName(string _type, string _attr, string _name, int _count) {
         type = std::move(_type);
+        attr = std::move(_attr);
         name = std::move(_name);
         count = _count;
     }
 
-    RegName(string _type, string _inst) {
+    RegName(string _type, string _attr, string _inst) {
         arithOpRex = R"((\w+)\.(\d+))";
         smatch opRexRes;
 
         type = std::move(_type);
+        attr = std::move(_attr);
         name = std::move(_inst);
         count = 0;
 
@@ -48,14 +48,16 @@ public:
     }
 
     string GetString() {
-        string _res = type + " " + name;
+        string _res = type + " " + attr + name;
         _res += count == 0 ? "" : "." + to_string(count);
 
         return _res;
     }
 
     string GetName() {
-        return name;
+        string _res = attr + name;
+        _res += count == 0 ? "" : "." + to_string(count);
+        return _res;
     }
 
     int GetCount() const {
@@ -71,6 +73,9 @@ private:
 
     string type;
     string name;
+
+    string attr;
+
     int count;
 };
 
@@ -83,16 +88,16 @@ public:
     }
 
     void Init(const smatch &instRexRes) {
-        op = instRexRes[2];
+        op = instRexRes[3];
 
-        res = new RegName(instRexRes[3], instRexRes[1]);
-        lReg = new RegName(instRexRes[3], instRexRes[4]);
-        rReg = new RegName(instRexRes[3], instRexRes[5]);
+        res = new RegName(instRexRes[4], instRexRes[1], instRexRes[2]);
+        lReg = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
+        rReg = new RegName(instRexRes[4], instRexRes[7], instRexRes[8]);
     }
 
     string GetString() {
-        string _res = res->GetString() + " = " + op + " " + res->GetType() + " " + lReg->GetString() + ", " +
-                      rReg->GetString();
+        string _res = res->GetName() + " = " + op + " " + res->GetType() + " " + lReg->GetName() + ", " +
+                      rReg->GetName();
         return _res;
     }
 
@@ -107,7 +112,9 @@ private:
 class FuncCall {
 public:
     FuncCall() {
-        funcArgsRex = R"((\w+)[\s%\\"]*(\w+[\.\d]*)[%\\"]*[, ]*)";
+        funcArgsRex = R"((\w+) [%@\\"]*(\w+[\.\d]*)[\\"]*[, ]*)";
+        funcArgsConstRex = R"((\w+) (\w+)[, ]*)";
+        funcArgsRegRex = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
     }
 
     void Init(const smatch &instRexRes) {
@@ -115,15 +122,20 @@ public:
         funcName = instRexRes[4].str();
 
         string tmpArgs = instRexRes[5];
-        while (!tmpArgs.empty()) {
-            smatch argsRexRes;
-            if (regex_search(tmpArgs, argsRexRes, funcArgsRex))
-                funcArgs.emplace_back(argsRexRes[1], argsRexRes[2]);
-
-            int pos = tmpArgs.find(argsRexRes[0]);
-            tmpArgs.erase(pos, argsRexRes[0].length());
+        smatch argsRexRes;
+        while (regex_search(tmpArgs, argsRexRes, funcArgsRex)) {
+            smatch tmpRes;
+            string tmpRexStr = argsRexRes[0];
+            if (regex_search(tmpRexStr, tmpRes, funcArgsConstRex)) {
+                funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2]);
+            } else if (regex_search(tmpRexStr, tmpRes, funcArgsRegRex)) {
+                funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3]);
+            }
+            int pos = tmpArgs.find(tmpRexStr);
+            tmpArgs.erase(pos, tmpRexStr.length());
         }
     }
+
 
     string GetString() {
         string _res;
@@ -139,6 +151,8 @@ public:
 
 private:
     regex funcArgsRex;
+    regex funcArgsConstRex;
+    regex funcArgsRegRex;
 
     string funcType;
     string funcName;
@@ -147,16 +161,24 @@ private:
 
 class StoreInst {
 public:
+    StoreInst() {
+        dest = new RegName;
+        source = new RegName;
+    }
+
     void Init(const smatch &instRexRes) {
-        ;
+        dest = new RegName(instRexRes[1], instRexRes[2], instRexRes[3]);
+        source = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
     }
 
     string GetString() {
-        ;
+        string _res = "store " + dest->GetString() + ", " + source->GetString();
+        return _res;
     }
 
 private:
-
+    RegName *dest;
+    RegName *source;
 };
 
 class Instruction {
@@ -167,9 +189,9 @@ public:
         funcCall = new FuncCall;
         storeInst = new StoreInst;
 
-        arithInstRex = R"(\%\"(.*)\" = (\w+) (\w+) \%\"(.*)\", \%\"(.*)\")";
+        arithInstRex = R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (%|@)[\\"](.*)[\\"], (%|@)[\\"](.*)[\\"])";
         funcCallRex = R"(\%\"(FunctionCall)\" = (call) (i256) @\"(\w+)\"\((.*)\))";
-        storeRex = R"(store (\w+) %\"(\w+)\", (\w+\**) @\"(\w+)\")";
+        storeRex = R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
     }
 
     void InitInst(const string &_inst) {

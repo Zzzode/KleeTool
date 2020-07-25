@@ -69,6 +69,7 @@ void Controller::FunChains() {
     funcChains->InitChains(document.Size());
     int chainIndex = 0;
     for (auto &funChain : document.GetArray()) {
+        cout << "/////// Function Chain " << to_string(chainIndex) << " ///////" << endl;
         assert(funChain.IsArray());
         FuncChain thisChain = funcChains->GetChain(chainIndex);
         thisChain.InitFunc(funChain.Size());
