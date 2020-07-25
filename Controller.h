@@ -21,94 +21,142 @@
 
 using namespace std;
 
-class ArithOp{
+class RegName {
 public:
-    void Init(const smatch& instRexRes){
+    RegName() : count(0) {
         arithOpRex = R"((\w+)\.(\d+))";
+    }
 
+    RegName(string _type, string _name, int _count) {
+        type = std::move(_type);
+        name = std::move(_name);
+        count = _count;
+    }
+
+    RegName(string _type, string _inst) {
+        arithOpRex = R"((\w+)\.(\d+))";
         smatch opRexRes;
-        op = instRexRes[2];
-        opType = instRexRes[3];
-        res.first = instRexRes[1];
-        lName.first = instRexRes[4];
-        rName.first = instRexRes[5];
 
-        if (regex_search(res.first, opRexRes, arithOpRex)) {
-            res.first = opRexRes[1];
-            res.second = stoi(opRexRes[2]);
-        }
+        type = std::move(_type);
+        name = std::move(_inst);
+        count = 0;
 
-        if (regex_search(lName.first, opRexRes, arithOpRex)) {
-            lName.first = opRexRes[1];
-            lName.second = stoi(opRexRes[2]);
-        }
-
-        if (regex_search(rName.first, opRexRes, arithOpRex)) {
-            rName.first = opRexRes[1];
-            rName.second = stoi(opRexRes[2]);
+        if (regex_search(name, opRexRes, arithOpRex)) {
+            name = opRexRes[1];
+            count = stoi(opRexRes[2]);
         }
     }
 
     string GetString() {
-        string _res;
-        if (res.second == 0)
-            _res += res.first;
-        else
-            _res += res.first + "." + to_string(res.second);
-
-        _res += " = " + op + " " + opType + " ";
-
-        if (lName.second == 0)
-            _res += lName.first;
-        else
-            _res += lName.first + "." + to_string(lName.second);
-
-        _res += ", ";
-
-        if (rName.second == 0)
-            _res += rName.first;
-        else
-            _res += rName.first + "." + to_string(rName.second);
+        string _res = type + " " + name;
+        _res += count == 0 ? "" : "." + to_string(count);
 
         return _res;
+    }
+
+    string GetName() {
+        return name;
+    }
+
+    int GetCount() const {
+        return count;
+    }
+
+    string GetType() {
+        return type;
     }
 
 private:
     regex arithOpRex;
 
-    string op;
-    string opType;
-
-    pair<string, int> res;
-    pair<string, int> lName;
-    pair<string, int> rName;
+    string type;
+    string name;
+    int count;
 };
 
-class FuncCall{
+class ArithOp {
 public:
-    void Init(const smatch& instRexRes){
-        ;
+    ArithOp() {
+        res = new RegName;
+        lReg = new RegName;
+        rReg = new RegName;
     }
 
-    string GetString() {;}
+    void Init(const smatch &instRexRes) {
+        op = instRexRes[2];
+
+        res = new RegName(instRexRes[3], instRexRes[1]);
+        lReg = new RegName(instRexRes[3], instRexRes[4]);
+        rReg = new RegName(instRexRes[3], instRexRes[5]);
+    }
+
+    string GetString() {
+        string _res = res->GetString() + " = " + op + " " + res->GetType() + " " + lReg->GetString() + ", " +
+                      rReg->GetString();
+        return _res;
+    }
 
 private:
+    string op;
+
+    RegName *res;
+    RegName *lReg;
+    RegName *rReg;
+};
+
+class FuncCall {
+public:
+    FuncCall() {
+        funcArgsRex = R"((\w+)[\s%\\"]*(\w+[\.\d]*)[%\\"]*[, ]*)";
+    }
+
+    void Init(const smatch &instRexRes) {
+        funcType = instRexRes[3].str();
+        funcName = instRexRes[4].str();
+
+        string tmpArgs = instRexRes[5];
+        while (!tmpArgs.empty()) {
+            smatch argsRexRes;
+            if (regex_search(tmpArgs, argsRexRes, funcArgsRex))
+                funcArgs.emplace_back(argsRexRes[1], argsRexRes[2]);
+
+            int pos = tmpArgs.find(argsRexRes[0]);
+            tmpArgs.erase(pos, argsRexRes[0].length());
+        }
+    }
+
+    string GetString() {
+        string _res;
+        _res = "call " + funcType + " @" + funcName + "(";
+        for (int i = 0; i < funcArgs.size(); ++i) {
+            _res += funcArgs[i].GetString();
+            if (i != funcArgs.size() - 1)
+                _res += ", ";
+        }
+        _res += ")";
+        return _res;
+    }
+
+private:
+    regex funcArgsRex;
+
     string funcType;
     string funcName;
-    vector<pair<string, string>> callArgs;
+    vector<RegName> funcArgs;
 };
 
-class StoreInst{
+class StoreInst {
 public:
-    void Init(const smatch& instRexRes){
+    void Init(const smatch &instRexRes) {
         ;
     }
 
-    string GetString(){
+    string GetString() {
         ;
     }
 
 private:
+
 };
 
 class Instruction {
@@ -120,7 +168,7 @@ public:
         storeInst = new StoreInst;
 
         arithInstRex = R"(\%\"(.*)\" = (\w+) (\w+) \%\"(.*)\", \%\"(.*)\")";
-        funcCallRex = R"(\%\"(FunctionCall)\" = (call) (i256) @\"(\w+)\"\(((\w+)\s(.*)[,\s]*)*\))";
+        funcCallRex = R"(\%\"(FunctionCall)\" = (call) (i256) @\"(\w+)\"\((.*)\))";
         storeRex = R"(store (\w+) %\"(\w+)\", (\w+\**) @\"(\w+)\")";
     }
 
@@ -129,31 +177,46 @@ public:
         if (regex_search(_inst, instRexRes, arithInstRex)) {
             arithOp->Init(instRexRes);
             instType = 1;
-        } else if (regex_search(_inst, instRexRes, funcCallRex)){
+        } else if (regex_search(_inst, instRexRes, funcCallRex)) {
             funcCall->Init(instRexRes);
             instType = 2;
-        } else if (regex_search(_inst, instRexRes, storeRex)){
+        } else if (regex_search(_inst, instRexRes, storeRex)) {
             storeInst->Init(instRexRes);
             instType = 3;
         }
     }
 
-    string GetString() const{
+    string GetString() const {
         switch (instType) {
-            case 1: return arithOp->GetString();
-            case 2: return funcCall->GetString();
-            case 3: return storeInst->GetString();
-            default: return "No such inst type!";
+            case 1:
+                return arithOp->GetString();
+            case 2:
+                return funcCall->GetString();
+            case 3:
+                return storeInst->GetString();
+            default:
+                return "No such inst type!";
         }
     }
 
-    string GetType() const {
+    int GetType() const {
+        /*
         switch (instType) {
-            case 1: return "Arithmetic operation";
-            case 2: return "Function call";
-            case 3: return "Store operation";
-            default: return "Unknown type";
+            case 1:
+                cout << "Arithmetic operation ";
+                break;
+            case 2:
+                cout << "Function call ";
+                break;
+            case 3:
+                cout << "Store operation ";
+                break;
+            default:
+                cout << "Unknown type ";
+                break;
         }
+        */
+        return instType;
     }
 
 private:
@@ -204,7 +267,7 @@ private:
 
 class FuncChain {
 public:
-    FuncChain() = default;
+    FuncChain() : length(0) {}
 
     unsigned int GetChainLength() const {
         return length;
@@ -212,7 +275,7 @@ public:
 
     void InitFunc(int _len) {
         length = _len;
-        function = new Function[_len];
+        function.resize(_len);
     }
 
     Function GetFunction(int _index) {
@@ -222,16 +285,18 @@ public:
 private:
     unsigned int length;
 
-    Function *function;
+    vector<Function> function;
 };
 
 class FuncChains {
 public:
+    FuncChains() : length(0) {}
+
     unsigned int GetLength() const { return length; }
 
     void InitChains(uint _len) {
         length = _len;
-        funcChain = new FuncChain[_len];
+        funcChain.resize(_len);
     }
 
     FuncChain GetChain(int _index) {
@@ -241,7 +306,7 @@ public:
 private:
     unsigned int length;
 
-    FuncChain *funcChain;
+    vector<FuncChain> funcChain;
 };
 
 class Controller {

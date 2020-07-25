@@ -67,11 +67,9 @@ void Controller::FunChains() {
 
     // document.Size为调用链数量
     funcChains->InitChains(document.Size());
-//    cout << funcChains->GetLength();
     int chainIndex = 0;
     for (auto &funChain : document.GetArray()) {
         assert(funChain.IsArray());
-
         FuncChain thisChain = funcChains->GetChain(chainIndex);
         thisChain.InitFunc(funChain.Size());
         chainIndex++;
@@ -86,14 +84,14 @@ void Controller::FunChains() {
 
             thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
             cout << "funcName = " << thisFunc.GetFuncName() << endl;
-            cout << "instruction num = " <<  to_string(thisFunc.GetInstNum())<< endl;
+
             int instNum = 0;
-            for (auto &inst : (funPtr.MemberBegin() + 1)->value.GetArray()){
+            for (auto &inst : (funPtr.MemberBegin() + 1)->value.GetArray()) {
                 assert(inst.IsObject());
                 Instruction thisInst = thisFunc.GetInst(instNum);
                 thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
 
-                cout << thisInst.GetType() << " " << thisInst.GetString() << endl;
+                cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
                 instNum++;
             }
             cout << endl;
