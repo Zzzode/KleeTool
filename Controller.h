@@ -32,8 +32,11 @@ public:
         count = _count;
     }
 
+    /**
+     * @sample i160, %, FunctionCall.1
+     */
     RegName(string _type, string _attr, string _inst) {
-        arithOpRex = R"((\w+)\.(\d+))";
+        regRex = R"((\w+)\.(\d+))";
         smatch opRexRes;
 
         type = std::move(_type);
@@ -41,22 +44,45 @@ public:
         name = std::move(_inst);
         count = 0;
 
-        if (regex_search(name, opRexRes, arithOpRex)) {
+        if (regex_search(name, opRexRes, regRex)) {
             name = opRexRes[1];
             count = stoi(opRexRes[2]);
         }
     }
 
+    /**
+     * @sample i160, %\"FunctionCall\"
+     */
+    RegName(string _type, const string &_str) {
+        smatch regRexRes;
+        regRex = R"((@|%)[\\"]*(\w+)\.(\d+)[\\"]*)";
+        regex regRex1(R"((@|%)[\\"]*(\w+)[\\"]*)");
+
+        type = std::move(_type);
+        if (regex_search(_str, regRexRes, regRex)) {
+            attr = std::move(regRexRes[1].str());
+            name = std::move(regRexRes[2].str());
+            count = stoi(regRexRes[3]);
+        } else if (regex_search(_str, regRexRes, regRex1)) {
+            attr = std::move(regRexRes[1].str());
+            name = std::move(regRexRes[2].str());
+            count = 0;
+        }
+    }
+
     string GetString() {
-        string _res = type + " " + attr + name;
-        _res += count == 0 ? "" : "." + to_string(count);
+        string _res = type + " " + GetName();
 
         return _res;
     }
 
     string GetName() {
-        string _res = attr + name;
+        if (attr.find("constant") != string::npos) {
+            return name;
+        }
+        string _res = attr + "\"" + name;
         _res += count == 0 ? "" : "." + to_string(count);
+        _res += "\"";
         return _res;
     }
 
@@ -69,7 +95,7 @@ public:
     }
 
 private:
-    regex arithOpRex;
+    regex regRex;
 
     string type;
     string name;
@@ -112,14 +138,16 @@ private:
 class FuncCall {
 public:
     FuncCall() {
+        callRes = new RegName;
         funcArgsRex = R"((\w+) [%@\\"]*(\w+[\.\d]*)[\\"]*[, ]*)";
         funcArgsConstRex = R"((\w+) (\w+)[, ]*)";
         funcArgsRegRex = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
     }
 
     void Init(const smatch &instRexRes) {
-        funcType = instRexRes[3].str();
-        funcName = instRexRes[4].str();
+        string _type = instRexRes[3].str();
+        callFunc = new RegName(_type, "@", instRexRes[4].str());
+        callRes = new RegName(_type, instRexRes[1].str());
 
         string tmpArgs = instRexRes[5];
         smatch argsRexRes;
@@ -136,10 +164,9 @@ public:
         }
     }
 
-
     string GetString() {
-        string _res;
-        _res = "call " + funcType + " @" + funcName + "(";
+        string _res = callRes->GetName() + " = ";
+        _res += "call " + callFunc->GetString() + "(";
         for (int i = 0; i < funcArgs.size(); ++i) {
             _res += funcArgs[i].GetString();
             if (i != funcArgs.size() - 1)
@@ -154,8 +181,9 @@ private:
     regex funcArgsConstRex;
     regex funcArgsRegRex;
 
-    string funcType;
-    string funcName;
+    RegName *callRes;
+    RegName *callFunc;
+//    string funcType;
     vector<RegName> funcArgs;
 };
 
@@ -167,12 +195,12 @@ public:
     }
 
     void Init(const smatch &instRexRes) {
-        dest = new RegName(instRexRes[1], instRexRes[2], instRexRes[3]);
-        source = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
+        source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3]);
+        dest = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
     }
 
     string GetString() {
-        string _res = "store " + dest->GetString() + ", " + source->GetString();
+        string _res = "store " + source->GetString() + ", " + dest->GetString();
         return _res;
     }
 
@@ -190,7 +218,7 @@ public:
         storeInst = new StoreInst;
 
         arithInstRex = R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (%|@)[\\"](.*)[\\"], (%|@)[\\"](.*)[\\"])";
-        funcCallRex = R"(\%\"(FunctionCall)\" = (call) (i256) @\"(\w+)\"\((.*)\))";
+        funcCallRex = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
         storeRex = R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
     }
 
@@ -280,6 +308,7 @@ public:
     }
 
 private:
+    // 指令数量
     unsigned int instLength;
 
     string funcName;

@@ -86,6 +86,7 @@ void Controller::FunChains() {
             thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
             cout << "funcName = " << thisFunc.GetFuncName() << endl;
 
+            // 每一次循环都是一条指令
             int instNum = 0;
             for (auto &inst : (funPtr.MemberBegin() + 1)->value.GetArray()) {
                 assert(inst.IsObject());

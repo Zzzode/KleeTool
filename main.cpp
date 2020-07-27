@@ -2,8 +2,6 @@
 #include "SearchC.h"
 #include "Controller.h"
 
-using namespace ModifyLLVM;
-
 int main(int argc, char **argv){
     string path = argv[1];
 

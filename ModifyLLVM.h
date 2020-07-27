@@ -8,26 +8,67 @@
 #include <set>
 #include <string>
 #include <vector>
-
 #include <thread>
 
-namespace ModifyLLVM {
-    using namespace std;
+#include "Controller.h"
 
-    vector<string> split(const string &str, const string &delim);
+using namespace std;
 
-    vector<pair<string, set<vector<string>>>> parseJson(const string &thisPath,
-                                                        const string &folderName);
+/**
+ * @brief 只有算数指令需要klee_assume()
+ */
+class KleeAssume {
+//    %11 = load i32, i32* %3, align 4
+//    %12 = icmp sgt i32 %11, 0
+//    %13 = zext i1 %12 to i32
+//    %14 = sext i32 %13 to i64
+//    call void @klee_assume(i64 %14)
+public:
+    // 1:Add 2:sub
+    KleeAssume(int _type, RegName _nameL, RegName _nameR, RegName _nameRes){
+        count = 1;
+        string tmpStr;
+        if (_type == 1) {
+//            tmpStr =  "%\"tmpRes" + ('.' + to_string(count) + "\"") + " = load " + _nameL.GetType().substr(0, _nameL.GetType().size() - 1) + ", " + _nameL.GetType() + " " + ;
+            newStr.push_back(tmpStr);
+        } else if (_type == 2) {
+            ;
+        }
+    };
 
-//    void GetFiles(const string &newPath, vector<string> &fileNames);
+private:
+    int count;
+    vector<string> newStr;
+};
 
-    void modifyLLVM(const string &newPath, vector<string> fileLines,
-                    const pair<string, set<vector<string>>> &func);
+class GlobalSymDecl{
+public:
+    GlobalSymDecl()= default;
+    void Init() {
 
-    void configArgv(const string &tmpArgv);
+    }
+private:
+    string symName;
+    pair<string, int> gDecl;
+};
 
-    bool threadControl(const string &thisPath, const string &folderName);
+class ModifyLLVM {
+public:
+    ModifyLLVM() {
+        kleeSymDecl = "declare void @klee_make_symbolic(i8*, i64, i8*)";
+        kleeAssumeDecl = "declare void @klee_assume(i64)";
+    }
 
-} // namespace ModifyLLVM
+private:
+    string kleeSymDecl;
+    string kleeAssumeDecl;
+
+    string globalSymDecl;
+};
+
+void modifyLLVM(const string &newPath, vector<string> fileLines,
+                const pair<string, set<vector<string>>> &func);
+
+void configArgv(const string &tmpArgv);
 
 #endif // KLEE_MODIFYLLVM_H
