@@ -127,6 +127,21 @@ public:
         return _res;
     }
 
+    string GetOp(){
+        return op;
+    }
+
+    RegName *GetReg(int _num){
+        switch (_num) {
+            case 1: return res;
+            case 2: return lReg;
+            case 3: return rReg;
+            default:
+                break;
+        }
+        return nullptr;
+    }
+
 private:
     string op;
 
@@ -246,6 +261,17 @@ public:
                 return storeInst->GetString();
             default:
                 return "No such inst type!";
+        }
+    }
+
+    void *GetInst() {
+        switch (instType) {
+            case 1:
+                return arithOp;
+            case 2:
+                return funcCall;
+            case 3:
+                return storeInst;
         }
     }
 

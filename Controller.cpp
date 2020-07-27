@@ -3,6 +3,7 @@
 //
 
 #include "Controller.h"
+#include "ModifyLLVM.h"
 
 void Controller::ParseJson(const string &folderName) {
     //从文件中读取，保证当前文件夹有.json文件
@@ -68,6 +69,7 @@ void Controller::FunChains() {
     // document.Size为调用链数量
     funcChains->InitChains(document.Size());
     int chainIndex = 0;
+    // 每一个循环都是一个调用链
     for (auto &funChain : document.GetArray()) {
         cout << "/////// Function Chain " << to_string(chainIndex) << " ///////" << endl;
         assert(funChain.IsArray());
@@ -93,7 +95,14 @@ void Controller::FunChains() {
                 Instruction thisInst = thisFunc.GetInst(instNum);
                 thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
 
-                cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
+                // 打印当前指令
+                 cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
+
+                if (thisInst.GetType() == 1) {
+                    auto arithInst = static_cast<ArithOp *>(thisInst.GetInst());
+                    ModifyLLVM modifyLlvm;
+                    modifyLlvm.ModifyArithInst(arithInst, instNum * 3);
+                }
                 instNum++;
             }
             cout << endl;

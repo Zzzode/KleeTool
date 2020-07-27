@@ -20,8 +20,7 @@
  * @param llName ll ir file name
  * @return success OR fail
  */
-void modifyLLVM(const string &newPath, vector<string> fileLines,
-                const pair<string, set<vector<string>>> &func) {
+void ModifyLLVM::Modify(const string &newPath, vector<string> fileLines, const pair<string, set<vector<string> > > &func) {
     // file stream
     ofstream outLLfile;
 
@@ -155,3 +154,16 @@ void modifyLLVM(const string &newPath, vector<string> fileLines,
     cout << "Modify LLVM OK!" << endl;
 }
 
+void ModifyLLVM::ModifyArithInst(ArithOp *inst, int num) {
+    int opType = inst->GetOp() == "add" ? 1 : 2;
+    vector<KleeAssume> kleeAssume;
+
+    // 首先添加klee_assume
+    // 除非并没有必要符号化
+    for (int i = 0; i < 3; ++i) {
+        kleeAssume.emplace_back(opType, num++, inst->GetReg(i + 1));
+
+        kleeAssume[i].Show();
+    }
+    cout << endl;
+}
