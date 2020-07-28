@@ -34,31 +34,31 @@ public:
         string tmpRes;
         string tmpOp;
 
-        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
-        tmpOp = "load i256 " + _nameL->GetName();
-        tmpStr = tmpRes;
-        newStr.push_back(tmpRes + " = " + tmpOp);
-        count++;
+//        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+//        tmpOp = "load i256, " + _nameL->GetString();
+//        tmpStr = tmpRes;
+//        newStr.push_back("  " + tmpRes + " = " + tmpOp);
+//        count++;
 
-        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         if (_opType == 1)
-            tmpOp = "icmp sgt i256 " + tmpStr + ", 0";
+            tmpOp = "icmp sgt " + _nameL->GetString() + ", 0";
         else if (_opType == 2)
-            tmpOp = "icmp slt i256 " + tmpStr + ", 0";
+            tmpOp = "icmp slt " + _nameL->GetString() + ", 0";
         tmpStr = tmpRes;
-        newStr.push_back(tmpRes + " = " + tmpOp);
+        newStr.push_back("  " + tmpRes + " = " + tmpOp);
         count++;
 
-        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         tmpOp = "zext i1 " + tmpStr + " to i32";
         tmpStr = tmpRes;
-        newStr.push_back(tmpRes + " = " + tmpOp);
+        newStr.push_back("  " + tmpRes + " = " + tmpOp);
         count++;
 
-        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         tmpOp = "sext i32 " + tmpStr + " to i64";
         tmpStr = tmpRes;
-        newStr.push_back(tmpRes + " = " + tmpOp);
+        newStr.push_back("  " + tmpRes + " = " + tmpOp);
 
         newStr.push_back("  call void @klee_assume(i64 " + tmpStr + ")");
     }
@@ -100,15 +100,24 @@ class LLVMFunction {
 public:
     LLVMFunction() : startLine(0), endLine(0) {}
 
-    LLVMFunction(int _startLine, int _endLine, string _funcName, vector<string> _funcLines) {
+    LLVMFunction(int _startLine, int _endLine, string _funcName, const vector<string> &_funcLines) {
         startLine = _startLine;
         endLine = _endLine;
         funcName = std::move(_funcName);
-        funcLines = std::move(_funcLines);
+        funcLines = _funcLines;
+        newLines = _funcLines;
     }
 
     vector<string> GetLines() {
         return funcLines;
+    }
+
+    vector<string> GetNewLines() {
+        return newLines;
+    }
+
+    void WriteNewLines(vector<string> _newLines){
+        newLines = std::move(_newLines);
     }
 
     void AddAssume(int _opType, int _num, RegName *_nameL) {
@@ -147,6 +156,7 @@ private:
     int startLine;
     int endLine;
     string funcName;
+    vector<string> newLines;
     vector<string> funcLines;
 };
 
@@ -194,6 +204,7 @@ public:
         return fileName;
     }
 
+    // 替换原函数
     void Replace(int _start, int _end, vector<string> _newStr){
         vector<string>::iterator iter;
         iter = fileLines.erase(fileLines.begin() + _start, fileLines.begin() + _end + 1);
@@ -243,6 +254,7 @@ public:
         return fileLines;
     }
 
+    // 创建新文件
     void CreateFile(const string& _newName){
         ofstream newFile(filePath + "/" + _newName, ios::out);
         for(const auto& fileLine : fileLines)
@@ -271,7 +283,7 @@ public:
 
     void Modify(const string &_instStr, LLVMFunction _llFunction);
 
-    void ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunction);
+    vector<string> ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunction);
 
     LLVMFile *GetLLVMFile() {
         return llvmFile;

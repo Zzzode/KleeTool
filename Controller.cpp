@@ -117,12 +117,16 @@ void Controller::FunChains(const string &folderName) {
                 if (thisInst.GetType() == 1) {
                     auto arithInst = static_cast<ArithOp *>(thisInst.GetInst());
 
-                    modifyLlvm.ModifyArithInst(arithInst, instNum * 3, thisLLVMFunc);
-
+                    thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyArithInst(arithInst, instNum * 3, thisLLVMFunc));
                     thisLLVMFunc.ClearAssume();
                 }
                 instNum++;
             }
+
+            modifyLlvm.GetLLVMFile()->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(), thisLLVMFunc.GetNewLines());
+            modifyLlvm.GetLLVMFile()->CreateFile("tmp.ll");
+            exit(0);
+
             // cout << endl;
             funcIndex++;
         }

@@ -13,28 +13,28 @@
 #include <unistd.h>
 
 
-void ModifyLLVM::Modify(const string& _instStr, LLVMFunction _llFunction) {
-    vector<string> funcLines = _llFunction.GetLines();
-    vector<string>::iterator iter;
+//void ModifyLLVM::Modify(const string& _instStr, LLVMFunction _llFunction) {
+//    vector<string> funcLines = _llFunction.GetNewLines();
+//
+////    cout << "debug: " << _instStr << endl;
+//
+//    for(int i = 0; i < funcLines.size(); ++i) {
+//        string funcLine = funcLines[i];
+//        if (funcLine.find(_instStr) != string::npos){
+//            cout << "debug: " << _instStr << endl;
+//
+//            vector<string> newStr = _llFunction.GetAssumeStr();
+//            _llFunction.Show();
+//            funcLines.insert(funcLines.begin() + i + 1, newStr.begin(), newStr.end());
+//        }
+//    }
+//
+//    _llFunction.WriteNewLines(funcLines);
+//
+//    exit(0);
+//}
 
-//    cout << "debug: " << _instStr << endl;
-
-    for(int i = 0; i < funcLines.size(); ++i) {
-        string funcLine = funcLines[i];
-        if (funcLine.find(_instStr) != string::npos){
-            cout << "debug: " << _instStr << endl;
-            vector<string> newStr = _llFunction.GetAssumeStr();
-            _llFunction.Show();
-            funcLines.insert(funcLines.begin() + i + 1, newStr.begin(), newStr.end());
-        }
-    }
-
-    llvmFile->Replace(_llFunction.StartLine(), _llFunction.EndLine(), funcLines);
-    llvmFile->CreateFile("tmp.ll");
-    exit(0);
-}
-
-void ModifyLLVM::ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunction) {
+vector<string> ModifyLLVM::ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunction) {
     int opType = inst->GetOp() == "add" ? 1 : 2;
     // 首先添加klee_assume
     // 除非这是第一个函数 否则并没有必要符号化
@@ -44,5 +44,21 @@ void ModifyLLVM::ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunctio
     }
 //    _llFunction.Show();
     // cout << endl;
-    Modify(inst->GetString(), _llFunction);
+//    Modify(inst->GetString(), _llFunction);
+
+    vector<string> funcLines = _llFunction.GetNewLines();
+//    cout << "debug: " << _instStr << endl;
+
+    for(int i = 0; i < funcLines.size(); ++i) {
+        string funcLine = funcLines[i];
+        if (funcLine.find(inst->GetString()) != string::npos){
+            cout << "debug: " << inst->GetString() << endl;
+
+            vector<string> newStr = _llFunction.GetAssumeStr();
+            _llFunction.Show();
+            funcLines.insert(funcLines.begin() + i + 1, newStr.begin(), newStr.end());
+        }
+    }
+
+    return funcLines;
 }
