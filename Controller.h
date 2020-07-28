@@ -273,6 +273,7 @@ public:
             case 3:
                 return storeInst;
         }
+        return nullptr;
     }
 
     int GetType() const {
@@ -336,9 +337,7 @@ public:
 private:
     // 指令数量
     unsigned int instLength;
-
     string funcName;
-
     vector<Instruction> instructions;
 };
 
@@ -352,17 +351,25 @@ public:
 
     void InitFunc(int _len) {
         length = _len;
-        function.resize(_len);
+        functions.resize(_len);
     }
 
     Function GetFunction(int _index) {
-        return function[_index];
+        return functions[_index];
+    }
+
+    vector<string> GetFuncNames(){
+        vector<string> _res;
+        for (auto a : functions) {
+            _res.push_back(a.GetFuncName());
+        }
+        return _res;
     }
 
 private:
     unsigned int length;
 
-    vector<Function> function;
+    vector<Function> functions;
 };
 
 class FuncChains {
@@ -399,7 +406,7 @@ public:
 
     void ParseJson(const string &folderName);
 
-    void FunChains();
+    void FunChains(const string &folderName);
 
     void ThreadControllor();
 

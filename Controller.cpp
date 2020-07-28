@@ -59,15 +59,19 @@ void Controller::Entry() {
 
         ParseJson(folderName);
 
-        FunChains();
+        FunChains(folderName);
     }
 }
 
-void Controller::FunChains() {
+void Controller::FunChains(const string &folderName) {
     assert(document.IsArray());
 
     // document.Size为调用链数量
     funcChains->InitChains(document.Size());
+    ModifyLLVM modifyLlvm(folderName, path + "/" + folderName, document.Size());
+    LLVMFile *thisLLVMFile = modifyLlvm.GetLLVMFile();
+    cout << "file name = " << thisLLVMFile->GetFileName() << endl;
+
     int chainIndex = 0;
     // 每一个循环都是一个调用链
     for (auto &funChain : document.GetArray()) {
@@ -75,7 +79,11 @@ void Controller::FunChains() {
         assert(funChain.IsArray());
         FuncChain thisChain = funcChains->GetChain(chainIndex);
         thisChain.InitFunc(funChain.Size());
-        chainIndex++;
+
+        // TODO 需要在这里定位文件中的调用链
+        // 一次定位的目的是减少IO耗时 但实际上最好的方法是一步到位
+        // LLVMFuncChain thisLLVMChain = thisLLVMFile->GetLLVMChain(chainIndex);
+        // thisLLVMChain.Init(funChain.Size());
 
         // 每一个循环都是一个函数
         int funcIndex = 0;
@@ -88,6 +96,13 @@ void Controller::FunChains() {
             thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
             cout << "funcName = " << thisFunc.GetFuncName() << endl;
 
+            // TODO 读入函数文件
+            string funcName = thisFunc.GetFuncName(); // cout << funcName << endl;
+            pair<int, vector<string>> tmpPairRes = thisLLVMFile->GetfuncLines(funcName);
+            LLVMFunction thisLLVMFunc(tmpPairRes.first, funcName, tmpPairRes.second);
+            for(const auto& funcLine : thisLLVMFunc.GetLines())
+                cout << funcLine << endl;
+
             // 每一次循环都是一条指令
             int instNum = 0;
             for (auto &inst : (funPtr.MemberBegin() + 1)->value.GetArray()) {
@@ -96,18 +111,22 @@ void Controller::FunChains() {
                 thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
 
                 // 打印当前指令
-                 cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
+                // cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
 
+                 // 当指令为算数操作时用klee_assume
+                 // 只有全局变量需要符号化
                 if (thisInst.GetType() == 1) {
                     auto arithInst = static_cast<ArithOp *>(thisInst.GetInst());
-                    ModifyLLVM modifyLlvm;
+
                     modifyLlvm.ModifyArithInst(arithInst, instNum * 3);
+                    modifyLlvm.Modify(arithInst->GetString());
                 }
                 instNum++;
             }
-            cout << endl;
+            // cout << endl;
             funcIndex++;
         }
+        chainIndex++;
     }
 }
 
