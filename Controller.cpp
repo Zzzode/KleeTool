@@ -98,10 +98,9 @@ void Controller::FunChains(const string &folderName) {
 
             // TODO 读入函数文件
             string funcName = thisFunc.GetFuncName(); // cout << funcName << endl;
-            pair<int, vector<string>> tmpPairRes = thisLLVMFile->GetfuncLines(funcName);
-            LLVMFunction thisLLVMFunc(tmpPairRes.first, funcName, tmpPairRes.second);
-            for(const auto& funcLine : thisLLVMFunc.GetLines())
-                cout << funcLine << endl;
+            LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(funcName);
+//            for(const auto& funcLine : thisLLVMFunc.GetLines())
+//                cout << funcLine << endl;
 
             // 每一次循环都是一条指令
             int instNum = 0;
@@ -118,8 +117,9 @@ void Controller::FunChains(const string &folderName) {
                 if (thisInst.GetType() == 1) {
                     auto arithInst = static_cast<ArithOp *>(thisInst.GetInst());
 
-                    modifyLlvm.ModifyArithInst(arithInst, instNum * 3);
-                    modifyLlvm.Modify(arithInst->GetString());
+                    modifyLlvm.ModifyArithInst(arithInst, instNum * 3, thisLLVMFunc);
+
+                    thisLLVMFunc.ClearAssume();
                 }
                 instNum++;
             }

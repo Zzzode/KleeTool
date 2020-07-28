@@ -34,13 +34,13 @@ public:
         string tmpRes;
         string tmpOp;
 
-        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         tmpOp = "load i256 " + _nameL->GetName();
         tmpStr = tmpRes;
         newStr.push_back(tmpRes + " = " + tmpOp);
         count++;
 
-        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         if (_opType == 1)
             tmpOp = "icmp sgt i256 " + tmpStr + ", 0";
         else if (_opType == 2)
@@ -49,18 +49,18 @@ public:
         newStr.push_back(tmpRes + " = " + tmpOp);
         count++;
 
-        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         tmpOp = "zext i1 " + tmpStr + " to i32";
         tmpStr = tmpRes;
         newStr.push_back(tmpRes + " = " + tmpOp);
         count++;
 
-        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
+        tmpRes = "  %\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
         tmpOp = "sext i32 " + tmpStr + " to i64";
         tmpStr = tmpRes;
         newStr.push_back(tmpRes + " = " + tmpOp);
 
-        newStr.push_back("call void @klee_assume(i64 " + tmpStr + ")");
+        newStr.push_back("  call void @klee_assume(i64 " + tmpStr + ")");
     }
 
     void Show() {
@@ -68,10 +68,14 @@ public:
             cout << line << endl;
     }
 
-    vector<string>::iterator GetPos(string _instStr){
-        vector<string>::iterator iter;
+//    vector<string>::iterator GetPos(string _instStr) {
+//        vector<string>::iterator iter;
+//
+//        return iter;
+//    }
 
-        return iter;
+    vector<string> GetNewStr() {
+        return newStr;
     }
 
 private:
@@ -79,40 +83,74 @@ private:
     vector<string> newStr;
 };
 
-class GlobalSymDecl {
+//class GlobalSymDecl {
+//public:
+//    GlobalSymDecl() = default;
+//
+//    void Init() {
+//
+//    }
+//
+//private:
+//    string symName;
+//    pair<string, int> gDecl;
+//};
+
+class LLVMFunction {
 public:
-    GlobalSymDecl() = default;
+    LLVMFunction() : startLine(0), endLine(0) {}
 
-    void Init() {
-
-    }
-
-private:
-    string symName;
-    pair<string, int> gDecl;
-};
-
-class LLVMFunction{
-public:
-    LLVMFunction() : lineNum(0) {}
-
-    LLVMFunction(int _lineNum, string _funcName, vector<string> _funcLines){
-        lineNum = _lineNum;
+    LLVMFunction(int _startLine, int _endLine, string _funcName, vector<string> _funcLines) {
+        startLine = _startLine;
+        endLine = _endLine;
         funcName = std::move(_funcName);
         funcLines = std::move(_funcLines);
     }
 
-    vector<string> GetLines(){
+    vector<string> GetLines() {
         return funcLines;
     }
 
+    void AddAssume(int _opType, int _num, RegName *_nameL) {
+        kleeAssumes.emplace_back(_opType, _num, _nameL);
+    }
+
+    void ClearAssume(){
+        kleeAssumes.clear();
+    }
+
+    vector<string> GetAssumeStr(){
+        vector<string> _res;
+        for(auto kleeAssume : kleeAssumes){
+            vector<string> tmp = kleeAssume.GetNewStr();
+            _res.insert(_res.end(), tmp.begin(), tmp.end());
+        }
+        return _res;
+    }
+
+    int StartLine(){
+        return startLine;
+    }
+    int EndLine(){
+        return endLine;
+    }
+
+    void Show(){
+        for(auto kleeAssume : kleeAssumes){
+            kleeAssume.Show();
+        }
+    }
+
 private:
-    int lineNum;
+    vector<KleeAssume> kleeAssumes;
+
+    int startLine;
+    int endLine;
     string funcName;
     vector<string> funcLines;
 };
 
-class LLVMFuncChain{
+class LLVMFuncChain {
 public:
     LLVMFuncChain() = default;
 
@@ -129,8 +167,9 @@ class LLVMFile {
 public:
     LLVMFile() = default;
 
-    explicit LLVMFile(const string& _name, const string &_path, int _size) {
+    explicit LLVMFile(const string &_name, const string &_path, int _size) {
         fileName = _name + ".ll";
+        filePath = _path;
         llFile.open(_path + "/" + fileName, ios::in);
         cout << "debug " << _path + "/" + fileName << endl;
         if (!llFile.is_open())
@@ -147,12 +186,18 @@ public:
         funcChains.resize(_size);
     }
 
-    LLVMFuncChain GetLLVMChain(int _index){
+    LLVMFuncChain GetLLVMChain(int _index) {
         return funcChains[_index];
     }
 
-    string GetFileName(){
+    string GetFileName() {
         return fileName;
+    }
+
+    void Replace(int _start, int _end, vector<string> _newStr){
+        vector<string>::iterator iter;
+        iter = fileLines.erase(fileLines.begin() + _start, fileLines.begin() + _end + 1);
+        fileLines.insert(iter, _newStr.begin(), _newStr.end());
     }
 
     /**
@@ -160,7 +205,10 @@ public:
      * @param _funcName
      * @return
      */
-    pair<int, vector<string>> GetfuncLines(const string& _funcName){
+    LLVMFunction InitFuncLines(const string &_funcName) {
+        int startLine = 0, endLine = 0;
+        vector<string> funcLines;
+
         bool inThisFunc = false;
         regex funcRex;
         smatch funcRexRes;
@@ -168,21 +216,19 @@ public:
 
 //        cout << "!!!" << _funcName << endl;
 
-        int lineNum;
-        vector<string> funcLines;
-
-        for(int i = 0; i < fileLines.size(); ++i){
+        for (int i = 0; i < fileLines.size(); ++i) {
             string fileLine = fileLines[i];
 //            cout << "!!!" << fileLine << endl;
             if (inThisFunc) {
                 funcLines.push_back(fileLine);
                 if (fileLine.find('}') != string::npos) {
+                    endLine = i;
                     inThisFunc = false;
                     break;
                 }
             } else {
                 if (regex_search(fileLine, funcRexRes, funcRex)) {
-                    lineNum = i;
+                    startLine = i;
 //                    cout << "!!!" << endl;
                     funcLines.push_back(fileLine);
                     inThisFunc = true;
@@ -190,13 +236,24 @@ public:
             }
         }
 
-        return pair<int, vector<string>>(lineNum, funcLines);
+        return LLVMFunction(startLine, endLine, _funcName, funcLines);
+    }
+
+    vector<string> GetFileLines() {
+        return fileLines;
+    }
+
+    void CreateFile(const string& _newName){
+        ofstream newFile(filePath + "/" + _newName, ios::out);
+        for(const auto& fileLine : fileLines)
+            newFile << fileLine << endl;
     }
 
 private:
     fstream llFile;
 private:
     string fileName;
+    string filePath;
     vector<string> fileLines;
 //    string fileLine;
 
@@ -212,17 +269,17 @@ public:
         llvmFile = new LLVMFile(_name, _path, _count);
     }
 
-    void Modify(const string& instStr);
+    void Modify(const string &_instStr, LLVMFunction _llFunction);
 
-    void ModifyArithInst(ArithOp *inst, int num);
+    void ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunction);
 
-    LLVMFile *GetLLVMFile(){
+    LLVMFile *GetLLVMFile() {
         return llvmFile;
     }
 
 private:
     LLVMFile *llvmFile;
-    vector<KleeAssume> kleeAssume;
+//    vector<KleeAssume> kleeAssume;
 
 private:
     string kleeSymDecl;
