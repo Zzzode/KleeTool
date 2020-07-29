@@ -144,10 +144,15 @@ public:
         return endLine;
     }
 
-    void Show(){
+    void ShowAssume(){
         for(auto kleeAssume : kleeAssumes){
             kleeAssume.Show();
         }
+    }
+
+    void Show() {
+        for (const auto &funcLine : funcLines)
+            cout << funcLine << endl;
     }
 
 private:

@@ -55,7 +55,7 @@ vector<string> ModifyLLVM::ModifyArithInst(ArithOp *inst, int num, LLVMFunction 
             cout << "debug: " << inst->GetString() << endl;
 
             vector<string> newStr = _llFunction.GetAssumeStr();
-            _llFunction.Show();
+            _llFunction.ShowAssume();
             funcLines.insert(funcLines.begin() + i + 1, newStr.begin(), newStr.end());
         }
     }

@@ -99,8 +99,7 @@ void Controller::FunChains(const string &folderName) {
             // TODO 读入函数文件
             string funcName = thisFunc.GetFuncName(); // cout << funcName << endl;
             LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(funcName);
-//            for(const auto& funcLine : thisLLVMFunc.GetLines())
-//                cout << funcLine << endl;
+            // thisLLVMFunc.Show();
 
             // 每一次循环都是一条指令
             int instNum = 0;
@@ -112,25 +111,41 @@ void Controller::FunChains(const string &folderName) {
                 // 打印当前指令
                 // cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
 
-                 // 当指令为算数操作时用klee_assume
-                 // 只有全局变量需要符号化
+                // 当指令为算数操作时用klee_assume
+                // 只有全局变量需要符号化
                 if (thisInst.GetType() == 1) {
                     auto arithInst = static_cast<ArithOp *>(thisInst.GetInst());
 
                     thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyArithInst(arithInst, instNum * 3, thisLLVMFunc));
                     thisLLVMFunc.ClearAssume();
+                } else if (thisInst.GetType() == 2) {
+                    auto callInst = static_cast<FuncCall *>(thisInst.GetInst());
+                    // TODO 需要将调用的函数的参数符号化
+
+                    // TODO 需要将函数本身的参数进行符号化
+
+                } else if (thisInst.GetType() == 3) {
+                    auto storeInst = static_cast<StoreInst *>(thisInst.GetInst());
+                    // TODO 需要将store的全局变量符号化
+
                 }
+                thisFunc.ReturnInst(instNum, thisInst);
                 instNum++;
             }
+            // 替换文件中当前函数
+            modifyLlvm.GetLLVMFile()->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
+                                              thisLLVMFunc.GetNewLines());
+            thisChain.ReturnFunction(funcIndex, thisFunc);
 
-            modifyLlvm.GetLLVMFile()->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(), thisLLVMFunc.GetNewLines());
-            modifyLlvm.GetLLVMFile()->CreateFile("tmp.ll");
-            exit(0);
-
-            // cout << endl;
             funcIndex++;
         }
+        // 创建新文件
+        modifyLlvm.GetLLVMFile()->CreateFile("tmp.ll");
         chainIndex++;
+        exit(0);
+        // TODO 找到调用链顶端的函数 调用`klee --entry-point=thisFuncName`
+
+        // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee --entry-point=thisFuncName`
     }
 }
 

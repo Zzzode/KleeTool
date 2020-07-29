@@ -154,6 +154,7 @@ class FuncCall {
 public:
     FuncCall() {
         callRes = new RegName;
+        callFunc = new RegName;
         funcArgsRex = R"((\w+) [%@\\"]*(\w+[\.\d]*)[\\"]*[, ]*)";
         funcArgsConstRex = R"((\w+) (\w+)[, ]*)";
         funcArgsRegRex = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
@@ -312,7 +313,7 @@ private:
 
 class Function {
 public:
-    Function() : instLength(0) {}
+    Function() : instLength(0), isChainBegin(false) {}
 
     string GetFuncName() { return funcName; }
 
@@ -325,6 +326,10 @@ public:
         return instructions[_index];
     }
 
+    void ReturnInst(int _index, Instruction _inst) {
+        instructions[_index] = std::move(_inst);
+    }
+
     void InitInsts(unsigned int _len) {
         instructions.resize(_len);
         instLength = _len;
@@ -335,6 +340,7 @@ public:
     }
 
 private:
+    bool isChainBegin;
     // 指令数量
     unsigned int instLength;
     string funcName;
@@ -364,6 +370,10 @@ public:
             _res.push_back(a.GetFuncName());
         }
         return _res;
+    }
+
+    void ReturnFunction(int _index, Function _function){
+        functions[_index] = std::move(_function);
     }
 
 private:
