@@ -97,10 +97,10 @@ private:
 
 class LLVMFunction {
 public:
-    LLVMFunction() : startLine(0), endLine(0), symCount(0) {}
+    LLVMFunction() : startLine(0), endLine(0) {}
 
     LLVMFunction(int _startLine, int _endLine, string _funcName, const vector<string> &_funcLines) {
-        symCount = 0;
+//        symCount = 0;
         startLine = _startLine;
         endLine = _endLine;
         funcName = std::move(_funcName);
@@ -156,10 +156,23 @@ public:
             cout << funcLine << endl;
     }
 
+//    void AddGlobalSymDecl(RegName *_reg){
+//        string _res = "@.str";
+//        _res += symCount == 0 ? "" : "." + to_string(symCount);
+//        _res += " = private unnamed_addr constant [";
+//        _res += to_string(_reg->GetPureName().size() + 1);
+//        _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
+//
+//        cout << "debug: " << _res << endl;
+//        globalSymDecls.push_back(_res);
+//        // str = private unnamed_addr constant [2 x i8] c"x\00";
+//    }
+
 public:
-    int symCount;
+//    int symCount;
 
 private:
+//    vector<string> globalSymDecls;
     vector<SymDecl> symDecls;
     vector<KleeAssume> kleeAssumes;
 
@@ -185,9 +198,16 @@ private:
 
 class LLVMFile {
 public:
-    LLVMFile() = default;
+    LLVMFile() : symCount(0) {
+        kleeSymDecl = "declare void @klee_make_symbolic(i8*, i64, i8*)";
+        kleeAssumeDecl = "declare void @klee_assume(i64)";
+    };
 
     explicit LLVMFile(const string &_name, const string &_path, int _size) {
+        kleeSymDecl = "declare void @klee_make_symbolic(i8*, i64, i8*)";
+        kleeAssumeDecl = "declare void @klee_assume(i64)";
+
+        symCount = 0;
         fileName = _name + ".ll";
         filePath = _path;
         llFile.open(_path + "/" + fileName, ios::in);
@@ -269,25 +289,44 @@ public:
         ofstream newFile(filePath + "/" + _newName, ios::out);
         for (const auto &fileLine : fileLines)
             newFile << fileLine << endl;
+
+        newFile << kleeSymDecl << endl;
+        newFile << kleeAssumeDecl << endl;
     }
+
+    void AddGlobalSymDecl(RegName *_reg) {
+        string _res = "@.str";
+        _res += symCount == 0 ? "" : "." + to_string(symCount);
+        _res += " = private unnamed_addr constant [";
+        _res += to_string(_reg->GetPureName().size() + 1);
+        _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
+
+        // cout << "debug: " << _res << endl;
+        globalSymDecls.push_back(_res);
+    }
+
+public:
+    int symCount;
 
 private:
     fstream llFile;
 private:
+    vector<string> globalSymDecls;
+
     string fileName;
     string filePath;
     vector<string> fileLines;
 //    string fileLine;
 
     vector<LLVMFuncChain> funcChains;
+
+    string kleeSymDecl;
+    string kleeAssumeDecl;
 };
 
 class ModifyLLVM {
 public:
-    explicit ModifyLLVM(const string &_name, const string &_path, int _count) {
-        kleeSymDecl = "declare void @klee_make_symbolic(i8*, i64, i8*)";
-        kleeAssumeDecl = "declare void @klee_assume(i64)";
-
+    ModifyLLVM(const string &_name, const string &_path, int _count) {
         llvmFile = new LLVMFile(_name, _path, _count);
     }
 
@@ -308,8 +347,6 @@ private:
 //    vector<KleeAssume> kleeAssume;
 
 private:
-    string kleeSymDecl;
-    string kleeAssumeDecl;
     string globalSymDecl;
 };
 

@@ -132,23 +132,23 @@ void Controller::FunChains(const string &folderName) {
                 } else if (thisInst.GetType() == 3) {
                     auto storeInst = static_cast<StoreInst *>(thisInst.GetInst());
 
-                    // TODO 需要将store的全局变量符号化
+                    // 需要将store的全局变量符号化
                     thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyStoreInst(storeInst, thisLLVMFunc));
-//                    cout << "debug: " << thisLLVMFunc.symCount << endl;
+//                    cout << "debug: " << thisLLVMFile->symCount << endl;
                     thisFunc.SetIsInit(true);
                 }
                 thisFunc.ReturnInst(instNum, thisInst);
                 instNum++;
             }
             // 替换文件中当前函数
-            modifyLlvm.GetLLVMFile()->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
+            thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                                               thisLLVMFunc.GetNewLines());
             thisChain.ReturnFunction(funcIndex, thisFunc);
 
             funcIndex++;
         }
         // 创建新文件
-        modifyLlvm.GetLLVMFile()->CreateFile("tmp.ll");
+        thisLLVMFile->CreateFile("tmp.ll");
         chainIndex++;
         exit(0);
         // TODO 找到调用链顶端的函数 调用`klee --entry-point=thisFuncName`
