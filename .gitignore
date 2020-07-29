@@ -90,3 +90,4 @@ dkms.conf
 # Clion configure files
 .idea/
 build/
+bin/
