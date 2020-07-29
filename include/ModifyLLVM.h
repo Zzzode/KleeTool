@@ -300,9 +300,18 @@ public:
         _res += " = private unnamed_addr constant [";
         _res += to_string(_reg->GetPureName().size() + 1);
         _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
-
         // cout << "debug: " << _res << endl;
-        globalSymDecls.push_back(_res);
+        globalSymDecls.emplace_back(_res, _reg);
+    }
+
+    void WriteGlobalSymDecl() {
+        for (auto _tmp : globalSymDecls) {
+            for (int i = 0; i < fileLines.size(); ++i) {
+                if (fileLines[i].find(_tmp.second->GetName() + " = ") != string::npos) {
+                    fileLines.insert(fileLines.begin() + i + 1, _tmp.first);
+                }
+            }
+        }
     }
 
 public:
@@ -311,7 +320,7 @@ public:
 private:
     fstream llFile;
 private:
-    vector<string> globalSymDecls;
+    vector<pair<string, RegName*>> globalSymDecls;
 
     string fileName;
     string filePath;

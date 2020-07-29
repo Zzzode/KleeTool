@@ -148,6 +148,7 @@ void Controller::FunChains(const string &folderName) {
             funcIndex++;
         }
         // 创建新文件
+        thisLLVMFile->WriteGlobalSymDecl();
         thisLLVMFile->CreateFile("tmp.ll");
         chainIndex++;
         exit(0);
