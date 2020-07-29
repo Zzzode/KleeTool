@@ -118,16 +118,24 @@ void Controller::FunChains(const string &folderName) {
 
                     thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyArithInst(arithInst, instNum * 3, thisLLVMFunc));
                     thisLLVMFunc.ClearAssume();
+
+                    thisFunc.SetIsArith(true);
                 } else if (thisInst.GetType() == 2) {
                     auto callInst = static_cast<FuncCall *>(thisInst.GetInst());
-                    // TODO 需要将调用的函数的参数符号化
 
-                    // TODO 需要将函数本身的参数进行符号化
+                    // TODO 需要将调用的函数的参数符号化 暂不需要
+                    // thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyCallInst(callInst, thisLLVMFunc));
+                    // TODO 需要将函数本身的参数进行符号化 暂不需要
+                    //
 
+                    thisFunc.SetIsCall(true);
                 } else if (thisInst.GetType() == 3) {
                     auto storeInst = static_cast<StoreInst *>(thisInst.GetInst());
-                    // TODO 需要将store的全局变量符号化
 
+                    // TODO 需要将store的全局变量符号化
+                    thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyStoreInst(storeInst, thisLLVMFunc));
+//                    cout << "debug: " << thisLLVMFunc.symCount << endl;
+                    thisFunc.SetIsInit(true);
                 }
                 thisFunc.ReturnInst(instNum, thisInst);
                 instNum++;

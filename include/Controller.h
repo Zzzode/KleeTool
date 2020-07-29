@@ -86,6 +86,15 @@ public:
         return _res;
     }
 
+    string GetPureName(){
+        if (attr.find("constant") != string::npos) {
+            return name;
+        }
+        string _res = name;
+        _res += count == 0 ? "" : "." + to_string(count);
+        return _res;
+    }
+
     int GetCount() const {
         return count;
     }
@@ -192,6 +201,14 @@ public:
         return _res;
     }
 
+    vector<RegName> GetArgs(){
+        return funcArgs;
+    }
+
+    int GetArgNum(){
+        return funcArgs.size();
+    }
+
 private:
     regex funcArgsRex;
     regex funcArgsConstRex;
@@ -218,6 +235,14 @@ public:
     string GetString() {
         string _res = "store " + source->GetString() + ", " + dest->GetString();
         return _res;
+    }
+
+    RegName *GetDest(){
+        return dest;
+    }
+
+    RegName *GetSource() {
+        return source;
     }
 
 private:
@@ -313,7 +338,7 @@ private:
 
 class Function {
 public:
-    Function() : instLength(0), isChainBegin(false) {}
+    Function() : instLength(0), isCall(false), isInit(false), isArith(false) {}
 
     string GetFuncName() { return funcName; }
 
@@ -339,8 +364,34 @@ public:
         return instLength;
     }
 
+    void SetIsCall(bool _bool) {
+        isCall = _bool;
+    }
+
+    void SetIsInit(bool _bool) {
+        isCall = _bool;
+    }
+
+    void SetIsArith(bool _bool) {
+        isArith = _bool;
+    }
+
+    bool IsCall(){
+        return isCall;
+    }
+
+    bool IsInit(){
+        return isInit;
+    }
+
+    bool IsArith(){
+        return isArith;
+    }
+
 private:
-    bool isChainBegin;
+    bool isArith;
+    bool isCall;
+    bool isInit;
     // 指令数量
     unsigned int instLength;
     string funcName;

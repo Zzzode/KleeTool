@@ -83,24 +83,24 @@ private:
     vector<string> newStr;
 };
 
-//class GlobalSymDecl {
-//public:
-//    GlobalSymDecl() = default;
-//
-//    void Init() {
-//
-//    }
-//
-//private:
-//    string symName;
-//    pair<string, int> gDecl;
-//};
+class SymDecl {
+public:
+    SymDecl() = default;
+
+    void Init() {
+
+    }
+
+private:
+    pair<int, RegName> syms;
+};
 
 class LLVMFunction {
 public:
-    LLVMFunction() : startLine(0), endLine(0) {}
+    LLVMFunction() : startLine(0), endLine(0), symCount(0) {}
 
     LLVMFunction(int _startLine, int _endLine, string _funcName, const vector<string> &_funcLines) {
+        symCount = 0;
         startLine = _startLine;
         endLine = _endLine;
         funcName = std::move(_funcName);
@@ -116,7 +116,7 @@ public:
         return newLines;
     }
 
-    void WriteNewLines(vector<string> _newLines){
+    void WriteNewLines(vector<string> _newLines) {
         newLines = std::move(_newLines);
     }
 
@@ -124,28 +124,29 @@ public:
         kleeAssumes.emplace_back(_opType, _num, _nameL);
     }
 
-    void ClearAssume(){
+    void ClearAssume() {
         kleeAssumes.clear();
     }
 
-    vector<string> GetAssumeStr(){
+    vector<string> GetAssumeStr() {
         vector<string> _res;
-        for(auto kleeAssume : kleeAssumes){
+        for (auto kleeAssume : kleeAssumes) {
             vector<string> tmp = kleeAssume.GetNewStr();
             _res.insert(_res.end(), tmp.begin(), tmp.end());
         }
         return _res;
     }
 
-    int StartLine(){
+    int StartLine() {
         return startLine;
     }
-    int EndLine(){
+
+    int EndLine() {
         return endLine;
     }
 
-    void ShowAssume(){
-        for(auto kleeAssume : kleeAssumes){
+    void ShowAssume() {
+        for (auto kleeAssume : kleeAssumes) {
             kleeAssume.Show();
         }
     }
@@ -155,7 +156,11 @@ public:
             cout << funcLine << endl;
     }
 
+public:
+    int symCount;
+
 private:
+    vector<SymDecl> symDecls;
     vector<KleeAssume> kleeAssumes;
 
     int startLine;
@@ -210,7 +215,7 @@ public:
     }
 
     // 替换原函数
-    void Replace(int _start, int _end, vector<string> _newStr){
+    void Replace(int _start, int _end, vector<string> _newStr) {
         vector<string>::iterator iter;
         iter = fileLines.erase(fileLines.begin() + _start, fileLines.begin() + _end + 1);
         fileLines.insert(iter, _newStr.begin(), _newStr.end());
@@ -260,9 +265,9 @@ public:
     }
 
     // 创建新文件
-    void CreateFile(const string& _newName){
+    void CreateFile(const string &_newName) {
         ofstream newFile(filePath + "/" + _newName, ios::out);
-        for(const auto& fileLine : fileLines)
+        for (const auto &fileLine : fileLines)
             newFile << fileLine << endl;
     }
 
@@ -286,9 +291,13 @@ public:
         llvmFile = new LLVMFile(_name, _path, _count);
     }
 
-    void Modify(const string &_instStr, LLVMFunction _llFunction);
+//    void Modify(const string &_instStr, LLVMFunction _llFunction);
 
-    vector<string> ModifyArithInst(ArithOp *inst, int num, LLVMFunction _llFunction);
+    vector<string> ModifyArithInst(ArithOp *_inst, int _num, LLVMFunction &_llFunction);
+
+    vector<string> ModifyCallInst(FuncCall *_inst, LLVMFunction &_llFunction);
+
+    vector<string> ModifyStoreInst(StoreInst *_inst, LLVMFunction &_llFunction);
 
     LLVMFile *GetLLVMFile() {
         return llvmFile;
