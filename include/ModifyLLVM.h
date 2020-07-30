@@ -234,7 +234,7 @@ public:
             fileLines.emplace_back(tmpLine);
 //            cout << "!!!" << tmpLine << endl;
         }
-
+        originFileLines.assign(fileLines.begin(), fileLines.end());
         llFile.close();
 
         funcChains.resize(_size);
@@ -387,6 +387,13 @@ public:
         }
     }
 
+    void Refresh(){
+        fileLines.assign(originFileLines.begin(), originFileLines.end());
+        symCount = 0;
+        globalSymDecls.clear();
+        localSymDecls.clear();
+    }
+
 public:
     int symCount;
 
@@ -399,6 +406,7 @@ private:
     string fileName;
     string filePath;
     vector<string> fileLines;
+    vector<string> originFileLines;
 //    string fileLine;
 
     vector<LLVMFuncChain> funcChains;
