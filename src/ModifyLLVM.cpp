@@ -89,13 +89,12 @@ vector<string> ModifyLLVM::ModifyStoreInst(StoreInst *_inst, LLVMFunction &_llFu
         if (funcLine.find(_inst->GetString()) != string::npos) {
             string newStr = R"(  call void @klee_make_symbolic(i8* bitcast )";
             newStr += "(" + _inst->GetDest()->GetString() + " to i8*), i64 4, i8* getelementptr inbounds ([";
-            int _size = _inst->GetDest()->GetPureName().size() + 1;
+            unsigned int _size = _inst->GetDest()->GetPureName().size() + 1;
             newStr += to_string(_size) + " x i8], [" + to_string(_size) + " x i8]* @.str";
             newStr += llvmFile->symCount == 0 ? "" : "." + to_string(llvmFile->symCount);
             newStr += ", i64 0, i64 0))";
 
             llvmFile->AddGlobalSymDecl(_inst->GetDest());
-            (llvmFile->symCount)++;
 
             funcLines.insert(funcLines.begin() + i + 1, newStr);
             // cout << "debug: " << newStr << endl;

@@ -86,7 +86,7 @@ public:
         return _res;
     }
 
-    string GetPureName(){
+    string GetPureName() {
         if (attr.find("constant") != string::npos) {
             return name;
         }
@@ -136,15 +136,18 @@ public:
         return _res;
     }
 
-    string GetOp(){
+    string GetOp() {
         return op;
     }
 
-    RegName *GetReg(int _num){
+    RegName *GetReg(int _num) {
         switch (_num) {
-            case 1: return res;
-            case 2: return lReg;
-            case 3: return rReg;
+            case 1:
+                return res;
+            case 2:
+                return lReg;
+            case 3:
+                return rReg;
             default:
                 break;
         }
@@ -201,11 +204,11 @@ public:
         return _res;
     }
 
-    vector<RegName> GetArgs(){
+    vector<RegName> GetArgs() {
         return funcArgs;
     }
 
-    int GetArgNum(){
+    int GetArgNum() {
         return funcArgs.size();
     }
 
@@ -217,6 +220,51 @@ private:
     RegName *callRes;
     RegName *callFunc;
 //    string funcType;
+    vector<RegName> funcArgs;
+};
+
+class FuncDefine {
+public:
+    FuncDefine() {
+        func = new RegName;
+        funcArgsRex = R"((\w+) [%@\\"]*(\w*[\.\d]*)[\\"]*[, ]*)";
+        funcArgsConstRex = R"((\w+) (\w+)[, ]*)";
+        funcArgsRegRex = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
+    }
+
+    void Init(const smatch &instRexRes) {
+        string _type = instRexRes[1].str();
+        func = new RegName(_type, "@", instRexRes[2].str());
+
+        string tmpArgs = instRexRes[3];
+        smatch argsRexRes;
+        while (regex_search(tmpArgs, argsRexRes, funcArgsRex)) {
+            smatch tmpRes;
+            string tmpRexStr = argsRexRes[0];
+            if (regex_search(tmpRexStr, tmpRes, funcArgsConstRex)) {
+                funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2]);
+            } else if (regex_search(tmpRexStr, tmpRes, funcArgsRegRex)) {
+                funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3]);
+            }
+            int pos = tmpArgs.find(tmpRexStr);
+            tmpArgs.erase(pos, tmpRexStr.length());
+        }
+    }
+
+    vector<RegName> GetArgs() {
+        return funcArgs;
+    }
+
+    int GetArgNum() {
+        return funcArgs.size();
+    }
+
+private:
+    regex funcArgsRex;
+    regex funcArgsConstRex;
+    regex funcArgsRegRex;
+
+    RegName *func;
     vector<RegName> funcArgs;
 };
 
@@ -237,7 +285,7 @@ public:
         return _res;
     }
 
-    RegName *GetDest(){
+    RegName *GetDest() {
         return dest;
     }
 
@@ -369,22 +417,22 @@ public:
     }
 
     void SetIsInit(bool _bool) {
-        isCall = _bool;
+        isInit = _bool;
     }
 
     void SetIsArith(bool _bool) {
         isArith = _bool;
     }
 
-    bool IsCall(){
+    bool IsCall() const {
         return isCall;
     }
 
-    bool IsInit(){
+    bool IsInit() const {
         return isInit;
     }
 
-    bool IsArith(){
+    bool IsArith() const {
         return isArith;
     }
 
@@ -415,7 +463,7 @@ public:
         return functions[_index];
     }
 
-    vector<string> GetFuncNames(){
+    vector<string> GetFuncNames() {
         vector<string> _res;
         for (auto a : functions) {
             _res.push_back(a.GetFuncName());
@@ -423,8 +471,21 @@ public:
         return _res;
     }
 
-    void ReturnFunction(int _index, Function _function){
+    void ReturnFunction(int _index, Function _function) {
         functions[_index] = std::move(_function);
+    }
+
+    Function &ReturnChainStart() {
+        Function &_res = functions.front();
+        if (functions.size() == 1)
+            return _res;
+        for (int i = 0; i < functions.size(); ++i) {
+            // cout << "debug: " << functions[i].IsArith() << functions[i].IsCall() << functions[i].IsInit() << endl;
+            if (functions[i].IsInit() && !functions[i].IsCall()) {
+                return functions[i - 1];
+            }
+        }
+        return functions.back();
     }
 
 private:

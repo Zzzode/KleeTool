@@ -137,6 +137,10 @@ public:
         return _res;
     }
 
+    string GetName(){
+        return funcName;
+    }
+
     int StartLine() {
         return startLine;
     }
@@ -189,6 +193,16 @@ public:
 
     void Init(int _size) {
         LLVMFunctions.resize(_size);
+    }
+
+    LLVMFunction &GetLLVMFunction(const string& _name){
+        LLVMFunction res;
+        for (LLVMFunction &func : LLVMFunctions){
+            if (func.GetName() == _name){
+                return func;
+            }
+        }
+        return res;
     }
 
 private:
@@ -302,15 +316,53 @@ public:
         _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
         // cout << "debug: " << _res << endl;
         globalSymDecls.emplace_back(_res, _reg);
+
+        symCount++;
+    }
+
+    void AddLocalSymDecl(RegName *_reg) {
+        string _res = "@.str";
+        _res += symCount == 0 ? "" : "." + to_string(symCount);
+        _res += " = private unnamed_addr constant [";
+        _res += to_string(_reg->GetPureName().size() + 1);
+        _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
+        // cout << "debug: " << _res << endl;
+        localSymDecls.emplace_back(_res, _reg);
+
+        symCount++;
+    }
+
+    void AddLocalSymDecl(LLVMFunction _llvmFunc) {
+        FuncDefine func;
+        smatch funcRes;
+        string defineStr = _llvmFunc.GetNewLines().front();
+        cout << "debug: " << defineStr << endl;
+        regex funcRex(R"(define (.*) @\"(.*)\"\((.*)\))");
+        if (regex_search(defineStr, funcRes, funcRex))
+            func.Init(funcRes);
+
+        vector<RegName> funcArgs;
+        for(auto arg : func.GetArgs()){
+            // cout << "debug: " << arg.GetString();
+            if (arg.GetType() != "constant") {
+                // cout << "!!!" << endl;
+                AddLocalSymDecl(&arg);
+            }
+        }
     }
 
     void WriteGlobalSymDecl() {
+        int lineNum;
         for (auto _tmp : globalSymDecls) {
             for (int i = 0; i < fileLines.size(); ++i) {
                 if (fileLines[i].find(_tmp.second->GetName() + " = ") != string::npos) {
                     fileLines.insert(fileLines.begin() + i + 1, _tmp.first);
+                    lineNum = i + 1;
                 }
             }
+        }
+        for (const auto& _tmp : localSymDecls) {
+            fileLines.insert(fileLines.begin() + (++lineNum), _tmp.first);
         }
     }
 
@@ -321,6 +373,7 @@ private:
     fstream llFile;
 private:
     vector<pair<string, RegName*>> globalSymDecls;
+    vector<pair<string, RegName*>> localSymDecls;
 
     string fileName;
     string filePath;
