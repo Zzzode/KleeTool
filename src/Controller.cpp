@@ -5,6 +5,7 @@
 #include "Controller.h"
 #include "ModifyLLVM.h"
 
+
 void Controller::ParseJson(const string &folderName) {
     //从文件中读取，保证当前文件夹有.json文件
     string jsonPath = path + "/" + folderName + "/" + folderName + ".json";
@@ -156,9 +157,11 @@ void Controller::FunChains(const string &folderName) {
         thisLLVMFile->WriteGlobalSymDecl();
         thisLLVMFile->CreateFile("tmp.ll");
         chainIndex++;
-        exit(0);
-        // TODO 找到调用链顶端的函数 调用`klee --entry-point=thisFuncName`
 
+        // 调用`klee --entry-point=thisFuncName`
+        RunKlee(lastFunc.GetFuncName(), folderName);
+
+        exit(0);
         // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee --entry-point=thisFuncName`
     }
 }

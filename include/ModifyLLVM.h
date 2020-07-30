@@ -349,7 +349,7 @@ public:
                     StoreInst storeInst;
                     storeInst.Init(funcLines[i]);
                     RegName *_dest = storeInst.GetDest();
-                    cout << "debug: " << _dest->GetString() << endl;
+                    cout << "debug dest: " << _dest->GetString() << endl;
 
                     vector<string> tmpLines;
                     string tmpLine;

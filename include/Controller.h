@@ -541,6 +541,14 @@ public:
 
     void ThreadControllor();
 
+    void RunKlee(const string& _funcName, const string& _folderName){
+        string _path = path + "/" + _folderName;
+        chdir(path.c_str());
+        string command = "klee --entry-point=" + _funcName + " " + _path + "/tmp.ll";
+        cout << command << endl;
+        system(command.c_str());
+    }
+
 private:
 
     string path;
