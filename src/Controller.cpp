@@ -147,9 +147,9 @@ void Controller::FunChains(const string &folderName) {
 
             funcIndex++;
         }
-        // TODO 符号化参数和调用函数参数
+        // 符号化参数和调用函数参数
         Function &lastFunc = thisChain.ReturnChainStart();
-        // cout << "debug: " << lastFunc.GetFuncName() << endl;
+        cout << "debug last function: " << lastFunc.GetFuncName() << endl;
         thisLLVMFile->AddLocalSymDecl(thisLLVMFile->InitFuncLines(lastFunc.GetFuncName()));
 
         // 创建新文件

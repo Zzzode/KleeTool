@@ -271,6 +271,7 @@ private:
 class StoreInst {
 public:
     StoreInst() {
+        storeRex = R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
         dest = new RegName;
         source = new RegName;
     }
@@ -278,6 +279,13 @@ public:
     void Init(const smatch &instRexRes) {
         source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3]);
         dest = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
+    }
+
+    void Init(const string& _inst){
+        smatch instRexRes;
+        if (regex_search(_inst, instRexRes, storeRex)){
+            Init(instRexRes);
+        }
     }
 
     string GetString() {
@@ -294,6 +302,7 @@ public:
     }
 
 private:
+    regex storeRex;
     RegName *dest;
     RegName *source;
 };

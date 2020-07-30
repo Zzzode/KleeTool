@@ -137,7 +137,7 @@ public:
         return _res;
     }
 
-    string GetName(){
+    string GetName() {
         return funcName;
     }
 
@@ -195,10 +195,10 @@ public:
         LLVMFunctions.resize(_size);
     }
 
-    LLVMFunction &GetLLVMFunction(const string& _name){
+    LLVMFunction &GetLLVMFunction(const string &_name) {
         LLVMFunction res;
-        for (LLVMFunction &func : LLVMFunctions){
-            if (func.GetName() == _name){
+        for (LLVMFunction &func : LLVMFunctions) {
+            if (func.GetName() == _name) {
                 return func;
             }
         }
@@ -335,24 +335,45 @@ public:
     void AddLocalSymDecl(LLVMFunction _llvmFunc) {
         FuncDefine func;
         smatch funcRes;
-        string defineStr = _llvmFunc.GetNewLines().front();
-        cout << "debug: " << defineStr << endl;
+        vector<string> funcLines = _llvmFunc.GetNewLines();
+        string defineStr = funcLines.front();
+        // cout << "debug: " << defineStr << endl;
         regex funcRex(R"(define (.*) @\"(.*)\"\((.*)\))");
         if (regex_search(defineStr, funcRes, funcRex))
             func.Init(funcRes);
 
         vector<RegName> funcArgs;
-        for(auto arg : func.GetArgs()){
-            // cout << "debug: " << arg.GetString();
-            if (arg.GetType() != "constant") {
-                // cout << "!!!" << endl;
-                AddLocalSymDecl(&arg);
+        for (auto arg : func.GetArgs()) {
+            for (int i = 0; i < funcLines.size(); ++i) {
+                if (funcLines[i].find("store " + arg.GetString() + ", ") != string::npos) {
+                    StoreInst storeInst;
+                    storeInst.Init(funcLines[i]);
+                    RegName *_dest = storeInst.GetDest();
+                    cout << "debug: " << _dest->GetString() << endl;
+
+                    vector<string> tmpLines;
+                    string tmpLine;
+                    tmpLines.push_back(
+                            "  %\"bitcast_" + to_string(symCount) + "\" = bitcast " + _dest->GetString() + " to i8*");
+                    tmpLine = "  call void @klee_make_symbolic(i8* " + ("%\"bitcast_" + to_string(symCount) + "\"");
+                    tmpLine += ", i64 4, i8* getelementptr inbounds ([";
+                    tmpLine += to_string(_dest->GetPureName().size() + 1) + " x i8], [" +
+                               to_string(_dest->GetPureName().size() + 1) + " x i8]* @.str";
+                    tmpLine += symCount == 0 ? "" : "." + to_string(symCount);
+                    tmpLine += ", i64 0, i64 0))";
+                    tmpLines.push_back(tmpLine);
+
+                    funcLines.insert(funcLines.begin() + i + 1, tmpLines.begin(), tmpLines.end());
+                    AddLocalSymDecl(_dest);
+                }
             }
         }
+        _llvmFunc.WriteNewLines(funcLines);
+        Replace(_llvmFunc.StartLine(), _llvmFunc.EndLine(), funcLines);
     }
 
     void WriteGlobalSymDecl() {
-        int lineNum;
+        int lineNum = 2;
         for (auto _tmp : globalSymDecls) {
             for (int i = 0; i < fileLines.size(); ++i) {
                 if (fileLines[i].find(_tmp.second->GetName() + " = ") != string::npos) {
@@ -361,7 +382,7 @@ public:
                 }
             }
         }
-        for (const auto& _tmp : localSymDecls) {
+        for (const auto &_tmp : localSymDecls) {
             fileLines.insert(fileLines.begin() + (++lineNum), _tmp.first);
         }
     }
@@ -372,8 +393,8 @@ public:
 private:
     fstream llFile;
 private:
-    vector<pair<string, RegName*>> globalSymDecls;
-    vector<pair<string, RegName*>> localSymDecls;
+    vector<pair<string, RegName *>> globalSymDecls;
+    vector<pair<string, RegName *>> localSymDecls;
 
     string fileName;
     string filePath;
