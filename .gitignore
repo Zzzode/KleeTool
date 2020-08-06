@@ -91,3 +91,4 @@ dkms.conf
 .idea/
 build/
 bin/
+.vscode/

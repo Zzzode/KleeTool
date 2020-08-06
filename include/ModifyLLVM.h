@@ -195,15 +195,15 @@ public:
         LLVMFunctions.resize(_size);
     }
 
-    LLVMFunction &GetLLVMFunction(const string &_name) {
-        LLVMFunction res;
-        for (LLVMFunction &func : LLVMFunctions) {
-            if (func.GetName() == _name) {
-                return func;
-            }
-        }
-        return res;
-    }
+//    LLVMFunction &GetLLVMFunction(const string &_name) {
+//        LLVMFunction res;
+//        for (LLVMFunction &func : LLVMFunctions) {
+//            if (func.GetName() == _name) {
+//                return func;
+//            }
+//        }
+//        return res;
+//    }
 
 private:
     // 一个函数调用链
