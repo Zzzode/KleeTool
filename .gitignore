@@ -89,6 +89,10 @@ dkms.conf
 
 # Clion configure files
 .idea/
+
+# build files
 build/
 bin/
+
+# vscode files
 .vscode/

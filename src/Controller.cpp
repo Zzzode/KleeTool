@@ -95,7 +95,7 @@ void Controller::FunChains(const string &folderName) {
             assert((funPtr.MemberBegin() + 1)->value.IsArray());
 
             thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
-            cout << "funcName = " << thisFunc.GetFuncName() << endl;
+            // cout << "funcName = " << thisFunc.GetFuncName() << endl;
 
             // TODO 读入函数文件
             string funcName = thisFunc.GetFuncName(); // cout << funcName << endl;
@@ -150,7 +150,7 @@ void Controller::FunChains(const string &folderName) {
         }
         // 符号化参数和调用函数参数
         Function &lastFunc = thisChain.ReturnChainStart();
-        cout << "debug last function: " << lastFunc.GetFuncName() << endl;
+        // cout << "debug last function: " << lastFunc.GetFuncName() << endl;
         thisLLVMFile->AddLocalSymDecl(thisLLVMFile->InitFuncLines(lastFunc.GetFuncName()));
 
         // 创建新文件

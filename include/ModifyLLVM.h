@@ -225,7 +225,7 @@ public:
         fileName = _name + ".ll";
         filePath = _path;
         llFile.open(_path + "/" + fileName, ios::in);
-        cout << "debug " << _path + "/" + fileName << endl;
+        // cout << "debug " << _path + "/" + fileName << endl;
         if (!llFile.is_open())
             cout << "Invalid llvm file!" << endl;
 
@@ -349,7 +349,7 @@ public:
                     StoreInst storeInst;
                     storeInst.Init(funcLines[i]);
                     RegName *_dest = storeInst.GetDest();
-                    cout << "debug dest: " << _dest->GetString() << endl;
+                    // cout << "debug dest: " << _dest->GetString() << endl;
 
                     vector<string> tmpLines;
                     string tmpLine;

@@ -2,7 +2,12 @@
 #include "SearchC.h"
 #include "Controller.h"
 
-int main(int argc, char **argv){
+int main(int argc, char **argv) {
+    if (argc == 1) {
+        cout << "Need folder!" << endl;
+        return 1;
+    }
+
     string path = argv[1];
 
     // TODO 多线程
