@@ -88,11 +88,11 @@ Mkfile.old
 dkms.conf
 
 # Clion configure files
-.idea/
+.idea
 
 # build files
-build/
-bin/
+build
+bin
 
 # vscode files
-.vscode/
+.vscode
