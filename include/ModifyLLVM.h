@@ -34,17 +34,12 @@ public:
     string tmpRes;
     string tmpOp;
 
-    //        tmpRes = "%\"tmpAssume_" + to_string(_num) + ("." +
-    //        to_string(count)) + "\""; tmpOp = "load i256, " +
-    //        _nameL->GetString(); tmpStr = tmpRes; newStr.push_back("  " +
-    //        tmpRes + " = " + tmpOp); count++;
-
     tmpRes =
         "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
     if (_opType == 1)
-      tmpOp = "icmp sgt " + _nameL->GetString() + ", 0";
+      tmpOp = "icmp ugt " + _nameL->GetString() + ", 0";
     else if (_opType == 2)
-      tmpOp = "icmp slt " + _nameL->GetString() + ", 0";
+      tmpOp = "icmp ult " + _nameL->GetString() + ", 0";
     tmpStr = tmpRes;
     newStr.push_back("  " + tmpRes + " = " + tmpOp);
     count++;
@@ -69,12 +64,6 @@ public:
     for (const string& line : newStr)
       cout << line << endl;
   }
-
-  //    vector<string>::iterator GetPos(string _instStr) {
-  //        vector<string>::iterator iter;
-  //
-  //        return iter;
-  //    }
 
   vector<string> GetNewStr() {
     return newStr;
@@ -362,7 +351,8 @@ public:
                              "\" = bitcast " + _dest->GetString() + " to i8*");
           tmpLine = "  call void @klee_make_symbolic(i8* " +
                     ("%\"bitcast_" + to_string(symCount) + "\"");
-          tmpLine += ", i64 4, i8* getelementptr inbounds ([";
+          tmpLine += ", i64 " + to_string(_dest->GetSize() / 8);
+          tmpLine += ", i8* getelementptr inbounds ([";
           tmpLine += to_string(_dest->GetPureName().size() + 1) + " x i8], [" +
                      to_string(_dest->GetPureName().size() + 1) +
                      " x i8]* @.str";

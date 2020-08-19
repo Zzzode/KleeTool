@@ -103,15 +103,22 @@ public:
     return type;
   }
 
-private:
-  regex regRex;
+  int GetSize() {
+    int size = 0;
+    regex sizeRex(R"(i(\w+).*)");
+    smatch res;
+    if(regex_search(type, res, sizeRex)){
+      size = stoi(res[1].str());
+    }
+    return size;
+  }
 
+private:
+  regex  regRex;
   string type;
   string name;
-
   string attr;
-
-  int count;
+  int    count;
 };
 
 class ArithOp {
@@ -215,7 +222,7 @@ private:
 
   RegName* callRes;
   RegName* callFunc;
-  //    string funcType;
+
   vector<RegName> funcArgs;
 };
 
@@ -493,8 +500,7 @@ public:
   }
 
 private:
-  unsigned int length;
-
+  unsigned int     length;
   vector<Function> functions;
 };
 
@@ -516,8 +522,7 @@ public:
   }
 
 private:
-  unsigned int length;
-
+  unsigned int      length;
   vector<FuncChain> funcChain;
 };
 
@@ -548,20 +553,15 @@ public:
   }
 
 private:
-  string path;
-
-  vector<string> folderNames;
-
-  string jsonName;
-
+  string              path;
+  vector<string>      folderNames;
+  string              jsonName;
   rapidjson::Document document;
-
-  FuncChains* funcChains;
+  FuncChains*         funcChains;
 
 private:
   mutex threadMutex;
-
-  int threadCount;
+  int   threadCount;
 };
 
 #endif  // MODIFYLLVM_CONTROLLER_H

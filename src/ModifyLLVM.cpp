@@ -64,7 +64,7 @@ vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
 }
 
 /**
- * TODO
+ * TODO //
  * @param _inst
  * @param _llFunction
  * @return
@@ -93,8 +93,9 @@ vector<string> ModifyLLVM::ModifyStoreInst(StoreInst*    _inst,
     string funcLine = funcLines[i];
     if (funcLine.find(_inst->GetString()) != string::npos) {
       string newStr = R"(  call void @klee_make_symbolic(i8* bitcast )";
-      newStr += "(" + _inst->GetDest()->GetString() +
-                " to i8*), i64 4, i8* getelementptr inbounds ([";
+      newStr += "(" + _inst->GetDest()->GetString() + " to i8*), i64 ";
+      newStr += to_string(_inst->GetDest()->GetSize() / 8) +
+                ", i8* getelementptr inbounds ([";
       unsigned int _size = _inst->GetDest()->GetPureName().size() + 1;
       newStr +=
           to_string(_size) + " x i8], [" + to_string(_size) + " x i8]* @.str";

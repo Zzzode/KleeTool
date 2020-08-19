@@ -166,7 +166,7 @@ void Controller::FunChains(const string& folderName) {
     // 调用`klee --entry-point=thisFuncName`
     RunKlee(lastFunc.GetFuncName(), folderName);
     thisLLVMFile->Refresh();
-    // exit(0);
+    exit(0);
     // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
     // --entry-point=thisFuncName`
   }
