@@ -12,40 +12,22 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// void ModifyLLVM::Modify(const string& _instStr, LLVMFunction _llFunction) {
-//    vector<string> funcLines = _llFunction.GetNewLines();
-//
-////    cout << "debug: " << _instStr << endl;
-//
-//    for(int i = 0; i < funcLines.size(); ++i) {
-//        string funcLine = funcLines[i];
-//        if (funcLine.find(_instStr) != string::npos){
-//            cout << "debug: " << _instStr << endl;
-//
-//            vector<string> newStr = _llFunction.GetAssumeStr();
-//            _llFunction.Show();
-//            funcLines.insert(funcLines.begin() + i + 1, newStr.begin(),
-//            newStr.end());
-//        }
-//    }
-//
-//    _llFunction.WriteNewLines(funcLines);
-//
-//    exit(0);
-//}
-
+/**
+ * 用于修改llvm中的算数指令
+ * @param _inst 当前指令
+ * @param _num  当前算数指令的序号
+ * @param _llFunction  当前函数
+ * @return 返回新函数文件行内容
+ */
 vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
                                            int           _num,
                                            LLVMFunction& _llFunction) {
   int opType = _inst->GetOp() == "add" ? 1 : 2;
   // 首先添加klee_assume
   // 除非这是第一个函数 否则并没有必要符号化
-  // TODO 全局变量需要符号化
-  for (int i = 0; i < 3; ++i) {
-    _llFunction.AddAssume(opType, _num++, _inst->GetReg(i + 1));
-  }
-  // _llFunction.Show();
-  // cout << endl;
+  for (int i = 0; i < 3; ++i)
+    _llFunction.AddAssume(opType, _num++, _inst->GetReg(i + 1),
+                          _inst->GetString());
 
   vector<string> funcLines = _llFunction.GetNewLines();
 
@@ -54,7 +36,29 @@ vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
     if (funcLine.find(_inst->GetString()) != string::npos) {
       // cout << "debug: " << _inst->GetString() << endl;
 
-      vector<string> newStr = _llFunction.GetAssumeStr();
+      vector<string> newStr(_llFunction.GetAssumeStr());
+      // _llFunction.ShowAssume();
+      funcLines.insert(funcLines.begin() + i + 1, newStr.begin(), newStr.end());
+    }
+  }
+
+  return funcLines;
+}
+
+vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&      _llFunction,
+                                         vector<KleeAssume> _assumes) {
+  vector<string> funcLines = _llFunction.GetNewLines();
+  string         inst      = _assumes[0].GetInst();
+  for (int i = 0; i < funcLines.size(); ++i) {
+    string funcLine = funcLines[i];
+    if (funcLine.find(inst) != string::npos) {
+      // cout << "debug: " << _inst->GetString() << endl;
+      vector<string> _res;
+      for (auto assume : _assumes) {
+        vector<string> tmp = assume.GetNewStr();
+        _res.insert(_res.end(), tmp.begin(), tmp.end());
+      }
+      vector<string> newStr(_res);
       // _llFunction.ShowAssume();
       funcLines.insert(funcLines.begin() + i + 1, newStr.begin(), newStr.end());
     }
@@ -64,7 +68,7 @@ vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
 }
 
 /**
- * TODO //
+ * TODO 暂时不用
  * @param _inst
  * @param _llFunction
  * @return

@@ -81,7 +81,7 @@ void Controller::FunChains(const string& folderName) {
     FuncChain thisChain = funcChains->GetChain(chainIndex);
     thisChain.InitFunc(funChain.Size());
 
-    // TODO 需要在这里定位文件中的调用链
+    // TODO 可以在这里定位文件中的调用链
     // 一次定位的目的是减少IO耗时 但实际上最好的方法是一步到位
     // LLVMFuncChain thisLLVMChain = thisLLVMFile->GetLLVMChain(chainIndex);
     // thisLLVMChain.Init(funChain.Size());
@@ -97,13 +97,13 @@ void Controller::FunChains(const string& folderName) {
       thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
       // cout << "funcName = " << thisFunc.GetFuncName() << endl;
 
-      // TODO 读入函数文件
+      // 读入函数文件
       string funcName = thisFunc.GetFuncName();  // cout << funcName << endl;
       LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(funcName);
       // thisLLVMFunc.Show();
 
-      // 每一次循环都是一条指令
       int instNum = 0;
+      // 每一次循环都是一条指令
       for (auto& inst : (funPtr.MemberBegin() + 1)->value.GetArray()) {
         assert(inst.IsObject());
         Instruction thisInst = thisFunc.GetInst(instNum);
@@ -113,21 +113,27 @@ void Controller::FunChains(const string& folderName) {
         // cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
 
         // 当指令为算数操作时用klee_assume
-        // 只有全局变量需要符号化
+        // TODO 全局变量需要符号化
         if (thisInst.GetType() == 1) {
           auto arithInst = static_cast<ArithOp*>(thisInst.GetInst());
 
-          thisLLVMFunc.WriteNewLines(
-              modifyLlvm.ModifyArithInst(arithInst, instNum * 3, thisLLVMFunc));
-          thisLLVMFunc.ClearAssume();
+          int opType = arithInst->GetOp() == "add" ? 1 : 2;
+          for (int i = 0; i < 3; ++i)
+            thisLLVMFunc.AddAssume(opType, instNum * 3 + i,
+                                   arithInst->GetReg(i + 1),
+                                   arithInst->GetString());
+
+          //          thisLLVMFunc.WriteNewLines(
+          //              modifyLlvm.ModifyArithInst(arithInst, instNum * 3,
+          //              thisLLVMFunc));
+          //          thisLLVMFunc.ClearAssume();
 
           thisFunc.SetIsArith(true);
         } else if (thisInst.GetType() == 2) {
           auto callInst = static_cast<FuncCall*>(thisInst.GetInst());
 
           // TODO 需要将调用的函数的参数符号化 暂不需要
-          // thisLLVMFunc.WriteNewLines(modifyLlvm.ModifyCallInst(callInst,
-          // thisLLVMFunc));
+          //
           // TODO 需要将函数本身的参数进行符号化 暂不需要
           //
 
@@ -135,11 +141,10 @@ void Controller::FunChains(const string& folderName) {
         } else if (thisInst.GetType() == 3) {
           auto storeInst = static_cast<StoreInst*>(thisInst.GetInst());
 
-          // 需要将store的全局变量符号化
+          // 将store的全局变量符号化
           thisLLVMFunc.WriteNewLines(
               modifyLlvm.ModifyStoreInst(storeInst, thisLLVMFunc));
-          //                    cout << "debug: " << thisLLVMFile->symCount <<
-          //                    endl;
+          // cout << "debug: " << thisLLVMFile->symCount << endl;
           thisFunc.SetIsInit(true);
         }
         thisFunc.ReturnInst(instNum, thisInst);
@@ -148,6 +153,8 @@ void Controller::FunChains(const string& folderName) {
       // 替换文件中当前函数
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
+      thisLLVMFile->ReturnLLFunc(funcName, thisLLVMFunc);
+
       thisChain.ReturnFunction(funcIndex, thisFunc);
 
       funcIndex++;
@@ -157,17 +164,32 @@ void Controller::FunChains(const string& folderName) {
     // cout << "debug last function: " << lastFunc.GetFuncName() << endl;
     thisLLVMFile->AddLocalSymDecl(
         thisLLVMFile->InitFuncLines(lastFunc.GetFuncName()));
-
-    // 创建新文件
     thisLLVMFile->WriteGlobalSymDecl();
-    thisLLVMFile->CreateFile("tmp.ll");
-    chainIndex++;
 
-    // 调用`klee --entry-point=thisFuncName`
-    RunKlee(lastFunc.GetFuncName(), folderName);
-    thisLLVMFile->Refresh();
-    exit(0);
+    // ！每个算数指令运行一次Klee
+    string             endFuncName = thisChain.GetFunction(0).GetFuncName();
+    vector<KleeAssume> assumes =
+        thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
+    LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
+    thisLLVMFile->SetTmpLines();
+    for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
+      vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
+                                    assumes.begin() + (3 * i + 3));
+      thisLLVMFunc.WriteNewLines(
+          modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes));
+      thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
+                            thisLLVMFunc.GetNewLines());
+
+      thisLLVMFile->CreateFile("tmp.ll");
+      // 调用`klee --entry-point=thisFuncName`
+      RunKlee(lastFunc.GetFuncName(), folderName);
+
+      thisLLVMFunc.Refresh();
+      thisLLVMFile->RefreshLines();
+    }
     // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
-    // --entry-point=thisFuncName`
+    thisLLVMFile->Refresh();
+    //    exit(0);
+    chainIndex++;
   }
 }

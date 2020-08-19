@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -28,7 +29,8 @@ public:
   KleeAssume() : count(0) {}
 
   // 1:Add 2:sub
-  KleeAssume(int _opType, int _num, RegName* _nameL) {
+  KleeAssume(int _opType, int _num, RegName* _nameL, string _inst) {
+    inst  = std::move(_inst);
     count = 1;
     string tmpStr;
     string tmpRes;
@@ -69,7 +71,12 @@ public:
     return newStr;
   }
 
+  string GetInst() {
+    return inst;
+  }
+
 private:
+  string         inst;
   int            count;
   vector<string> newStr;
 };
@@ -108,12 +115,20 @@ public:
     return newLines;
   }
 
+  void Refresh(){
+    newLines = vector<string>(funcLines);
+  }
+
   void WriteNewLines(vector<string> _newLines) {
     newLines = std::move(_newLines);
   }
 
-  void AddAssume(int _opType, int _num, RegName* _nameL) {
-    kleeAssumes.emplace_back(_opType, _num, _nameL);
+  void AddAssume(int _opType, int _num, RegName* _nameL, const string& _inst) {
+    kleeAssumes.emplace_back(_opType, _num, _nameL, _inst);
+  }
+
+  vector<KleeAssume> GetAssumes() {
+    return kleeAssumes;
   }
 
   void ClearAssume() {
@@ -152,17 +167,17 @@ public:
       cout << funcLine << endl;
   }
 
-  //    void AddGlobalSymDecl(RegName *_reg){
-  //        string _res = "@.str";
-  //        _res += symCount == 0 ? "" : "." + to_string(symCount);
-  //        _res += " = private unnamed_addr constant [";
-  //        _res += to_string(_reg->GetPureName().size() + 1);
-  //        _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
-  //
-  //        cout << "debug: " << _res << endl;
-  //        globalSymDecls.push_back(_res);
-  //        // str = private unnamed_addr constant [2 x i8] c"x\00";
-  //    }
+  /*  void AddGlobalSymDecl(RegName* _reg) {
+      string _res = "@.str";
+      _res += symCount == 0 ? "" : "." + to_string(symCount);
+      _res += " = private unnamed_addr constant [";
+      _res += to_string(_reg->GetPureName().size() + 1);
+      _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
+
+      cout << "debug: " << _res << endl;
+      globalSymDecls.push_back(_res);
+      // str = private unnamed_addr constant [2 x i8] c"x\00";
+    }*/
 
 public:
   //    int symCount;
@@ -187,15 +202,15 @@ public:
     LLVMFunctions.resize(_size);
   }
 
-  //    LLVMFunction &GetLLVMFunction(const string &_name) {
-  //        LLVMFunction res;
-  //        for (LLVMFunction &func : LLVMFunctions) {
-  //            if (func.GetName() == _name) {
-  //                return func;
-  //            }
-  //        }
-  //        return res;
-  //    }
+  /*  LLVMFunction& GetLLVMFunction(const string& _name) {
+      LLVMFunction res;
+      for (LLVMFunction& func : LLVMFunctions) {
+        if (func.GetName() == _name) {
+          return func;
+        }
+      }
+      return res;
+    }*/
 
 private:
   // 一个函数调用链
@@ -224,7 +239,7 @@ public:
     string tmpLine;
     while (getline(llFile, tmpLine)) {
       fileLines.emplace_back(tmpLine);
-      //            cout << "!!!" << tmpLine << endl;
+      //  cout << "!!!" << tmpLine << endl;
     }
     originFileLines.assign(fileLines.begin(), fileLines.end());
     llFile.close();
@@ -284,7 +299,18 @@ public:
       }
     }
 
-    return LLVMFunction(startLine, endLine, _funcName, funcLines);
+    LLVMFunction _res(startLine, endLine, _funcName, funcLines);
+    llvmFunctions.emplace(_funcName, _res);
+
+    return _res;
+  }
+
+  unordered_map<string, LLVMFunction> GetLLFuncs() {
+    return llvmFunctions;
+  }
+
+  void ReturnLLFunc(const string& _funcName, LLVMFunction& _llFunc) {
+    llvmFunctions[_funcName] = _llFunc;
   }
 
   vector<string> GetFileLines() {
@@ -392,6 +418,14 @@ public:
     localSymDecls.clear();
   }
 
+  void SetTmpLines() {
+    tmpFileLines = vector<string>(fileLines);
+  }
+
+  void RefreshLines() {
+    fileLines = vector<string>(tmpFileLines);
+  }
+
 public:
   int symCount;
 
@@ -399,11 +433,15 @@ private:
   fstream llFile;
 
 private:
+  unordered_map<string, LLVMFunction> llvmFunctions;
+
   vector<pair<string, RegName*>> globalSymDecls;
   vector<pair<string, RegName*>> localSymDecls;
 
-  string         fileName;
-  string         filePath;
+  string fileName;
+  string filePath;
+
+  vector<string> tmpFileLines;
   vector<string> fileLines;
   vector<string> originFileLines;
   //    string fileLine;
@@ -428,6 +466,9 @@ public:
   vector<string> ModifyCallInst(FuncCall* _inst, LLVMFunction& _llFunction);
 
   vector<string> ModifyStoreInst(StoreInst* _inst, LLVMFunction& _llFunction);
+
+  vector<string> ModifyAssumes(LLVMFunction&      _llFunction,
+                               vector<KleeAssume> _assumes);
 
   LLVMFile* GetLLVMFile() {
     return llvmFile;

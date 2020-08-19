@@ -129,6 +129,10 @@ public:
     rReg = new RegName;
   }
 
+  ArithOp(ArithOp *inst){
+    ;
+  }
+
   void Init(const smatch& instRexRes) {
     op = instRexRes[3];
 
@@ -548,6 +552,7 @@ public:
     chdir(path.c_str());
     string command =
         "klee --entry-point=" + _funcName + " " + _path + "/tmp.ll";
+    cout << endl;
     cout << command << endl;
     system(command.c_str());
   }
