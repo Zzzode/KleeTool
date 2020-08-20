@@ -191,6 +191,7 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFile->RefreshLines();
     }
     // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
+    //
     thisLLVMFile->Refresh();
     exit(0);
     chainIndex++;
