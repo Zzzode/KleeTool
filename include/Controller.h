@@ -104,10 +104,10 @@ public:
   }
 
   int GetSize() {
-    int size = 0;
-    regex sizeRex(R"(i(\w+).*)");
+    int    size = 0;
+    regex  sizeRex(R"(i(\w+).*)");
     smatch res;
-    if(regex_search(type, res, sizeRex)){
+    if (regex_search(type, res, sizeRex)) {
       size = stoi(res[1].str());
     }
     return size;
@@ -129,7 +129,7 @@ public:
     rReg = new RegName;
   }
 
-  ArithOp(ArithOp *inst){
+  ArithOp(ArithOp* inst) {
     ;
   }
 
@@ -547,11 +547,25 @@ public:
 
   void ThreadControllor();
 
-  void RunKlee(const string& _funcName, const string& _folderName) {
-    string _path = path + "/" + _folderName;
+  void RunKlee(const string& _funcName,
+               const string& _folderName,
+               const string& _inst,
+               const string& _instIndex,
+               const string& _chainIndex) {
+    string _path(path + "/" + _folderName);
+    string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
+    string _outPath(_outFolder + "/inst" + _instIndex);
+
     chdir(path.c_str());
-    string command =
-        "klee --entry-point=" + _funcName + " " + _path + "/tmp.ll";
+    if (access(_outFolder.c_str(), 0) != -1) {
+      if (access(_outPath.c_str(), 0) != -1)
+        system(("rm -r " + _outPath).c_str());
+    } else mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+
+    string command("klee --entry-point=" + _funcName +
+                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
+
     cout << endl;
     cout << command << endl;
     system(command.c_str());

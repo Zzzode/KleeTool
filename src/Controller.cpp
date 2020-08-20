@@ -5,6 +5,8 @@
 #include "Controller.h"
 #include "ModifyLLVM.h"
 
+#include <unistd.h>
+
 void Controller::ParseJson(const string& folderName) {
   //从文件中读取，保证当前文件夹有.json文件
   string   jsonPath = path + "/" + folderName + "/" + folderName + ".json";
@@ -185,7 +187,8 @@ void Controller::FunChains(const string& folderName) {
 
       thisLLVMFile->CreateFile("tmp.ll");
       // 调用`klee --entry-point=thisFuncName`
-      RunKlee(lastFunc.GetFuncName(), folderName);
+      RunKlee(lastFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
+              to_string(i), to_string(chainIndex));
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
