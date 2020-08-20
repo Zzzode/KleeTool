@@ -29,7 +29,12 @@ public:
   KleeAssume() : count(0) {}
 
   // 1:Add 2:sub
-  KleeAssume(int _opType, int _num, RegName* _nameL, string _inst) {
+  KleeAssume(int      _opType,
+             int      _num,
+             RegName* _nameL,
+             RegName* _nameR,
+             string   _inst,
+             bool     _first) {
     inst  = std::move(_inst);
     count = 1;
     string tmpStr;
@@ -38,10 +43,17 @@ public:
 
     tmpRes =
         "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
-    if (_opType == 1)
-      tmpOp = "icmp ugt " + _nameL->GetString() + ", 0";
-    else if (_opType == 2)
-      tmpOp = "icmp ult " + _nameL->GetString() + ", 0";
+    if (_first) {
+      if (_opType == 1)
+        tmpOp = "icmp ult " + _nameL->GetString() + ", " + _nameR->GetName();
+      else if (_opType == 2)
+        tmpOp = "icmp ugt " + _nameL->GetString() + ", " + _nameR->GetName();
+    } else {
+      if (_opType == 1)
+        tmpOp = "icmp ult " + _nameL->GetString() + ", 0";
+      else if (_opType == 2)
+        tmpOp = "icmp ugt " + _nameL->GetString() + ", 0";
+    }
     tmpStr = tmpRes;
     newStr.push_back("  " + tmpRes + " = " + tmpOp);
     count++;
@@ -115,7 +127,7 @@ public:
     return newLines;
   }
 
-  void Refresh(){
+  void Refresh() {
     newLines = vector<string>(funcLines);
   }
 
@@ -123,8 +135,13 @@ public:
     newLines = std::move(_newLines);
   }
 
-  void AddAssume(int _opType, int _num, RegName* _nameL, const string& _inst) {
-    kleeAssumes.emplace_back(_opType, _num, _nameL, _inst);
+  void AddAssume(int           _opType,
+                 int           _num,
+                 RegName*      _nameL,
+                 RegName*      _nameR,
+                 const string& _inst,
+                 bool          _first) {
+    kleeAssumes.emplace_back(_opType, _num, _nameL, _nameR, _inst, _first);
   }
 
   vector<KleeAssume> GetAssumes() {

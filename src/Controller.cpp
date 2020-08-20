@@ -117,16 +117,19 @@ void Controller::FunChains(const string& folderName) {
         if (thisInst.GetType() == 1) {
           auto arithInst = static_cast<ArithOp*>(thisInst.GetInst());
 
-          int opType = arithInst->GetOp() == "add" ? 1 : 2;
-          for (int i = 0; i < 3; ++i)
-            thisLLVMFunc.AddAssume(opType, instNum * 3 + i,
-                                   arithInst->GetReg(i + 1),
-                                   arithInst->GetString());
+          int opType =
+              arithInst->GetOp() == "add" || arithInst->GetOp() == "mul" ? 1 :
+                                                                           2;
 
-          //          thisLLVMFunc.WriteNewLines(
-          //              modifyLlvm.ModifyArithInst(arithInst, instNum * 3,
-          //              thisLLVMFunc));
-          //          thisLLVMFunc.ClearAssume();
+          thisLLVMFunc.AddAssume(3 - opType, instNum * 3 + 0,
+                                 arithInst->GetReg(2), arithInst->GetReg(2),
+                                 arithInst->GetString(), false);
+          thisLLVMFunc.AddAssume(3 - opType, instNum * 3 + 1,
+                                 arithInst->GetReg(3), arithInst->GetReg(2),
+                                 arithInst->GetString(), false);
+          thisLLVMFunc.AddAssume(opType + 0, instNum * 3 + 2,
+                                 arithInst->GetReg(1), arithInst->GetReg(2),
+                                 arithInst->GetString(), true);
 
           thisFunc.SetIsArith(true);
         } else if (thisInst.GetType() == 2) {
@@ -189,7 +192,7 @@ void Controller::FunChains(const string& folderName) {
     }
     // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
     thisLLVMFile->Refresh();
-    //    exit(0);
+    exit(0);
     chainIndex++;
   }
 }

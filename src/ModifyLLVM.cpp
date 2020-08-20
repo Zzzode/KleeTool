@@ -19,7 +19,7 @@
  * @param _llFunction  当前函数
  * @return 返回新函数文件行内容
  */
-vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
+/*vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
                                            int           _num,
                                            LLVMFunction& _llFunction) {
   int opType = _inst->GetOp() == "add" ? 1 : 2;
@@ -43,7 +43,7 @@ vector<string> ModifyLLVM::ModifyArithInst(ArithOp*      _inst,
   }
 
   return funcLines;
-}
+}*/
 
 vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&      _llFunction,
                                          vector<KleeAssume> _assumes) {
