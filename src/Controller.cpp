@@ -53,6 +53,8 @@ void Controller::GetFiles() {
 void Controller::Entry() {
   GetFiles();
   for (const auto& folderName : folderNames) {
+    // 开始计时
+    start = clock();
     if (folderName.find(R"(.py)") != string::npos)
       continue;
 
@@ -60,8 +62,14 @@ void Controller::Entry() {
     cout << "This path is " << thisPath << endl;
 
     ParseJson(folderName);
-
     FunChains(folderName);
+
+    // 结束计时
+    end = clock();
+    // 输出时间
+    double endtime = (double)(end - start) / CLOCKS_PER_SEC;
+    ofstream out(path + "/" + folderName + "/time.txt");
+    out << "time = " << endtime * 1000 << " ms" << endl;
   }
 }
 
@@ -199,9 +207,8 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
     }
-
+    exit(0);
     thisLLVMFile->Refresh();
-    // exit(0);
     chainIndex++;
   }
 }

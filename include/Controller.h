@@ -357,11 +357,11 @@ public:
     return num;
   }
 
-  string GetStr(){
+  string GetStr() {
     return str;
   }
 
-  RegName GetSymbol(){
+  RegName GetSymbol() {
     return symbol;
   }
 
@@ -621,7 +621,7 @@ public:
     string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
     string _outPath(_outFolder + "/inst" + _instIndex);
 
-    chdir(path.c_str());
+    chdir(_outFolder.c_str());
     if (access(_outFolder.c_str(), 0) != -1) {
       if (access(_outPath.c_str(), 0) != -1)
         system(("rm -r " + _outPath).c_str());
@@ -635,18 +635,57 @@ public:
     cout << command << endl;
     system(command.c_str());
 
+    ExtractInfo(_funcName, _folderName, _inst, _instIndex, _chainIndex);
+  }
+
+  void ExtractInfo(const string& _funcName,
+                   const string& _folderName,
+                   const string& _inst,
+                   const string& _instIndex,
+                   const string& _chainIndex) {
+    string _path(path + "/" + _folderName);
+    string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
+    string _outPath(_outFolder + "/inst" + _instIndex);
+
     ofstream out;
+    ifstream in;
+    // 输出指令
     out.open(_outPath + "/inst.txt");
     // 判断文件是否已经打开
     if (out.is_open())
       out << _inst << endl;
+    out.close();
+    // 获取所有ktest文件名
+    vector<string> ktestFiles;
+    GetKtestFile(_outPath, ktestFiles);
+    for (int i = 0; i < ktestFiles.size(); i++) {
+      string command("ktest-tool " + _outPath + "/" + ktestFiles[i] + " > " +
+                     _outPath + "/res" + to_string(i) + ".txt");
+      system(command.c_str());
+      // cout << command << endl;
+    }
   }
 
-  void extractInfo(const string& _funcName,
-                   const string& _folderName,
-                   const string& _instIndex,
-                   const string& _chainIndex) {
-    ;
+  void GetKtestFile(string& _path, vector<string>& _files) {
+    DIR*           dir;
+    struct dirent* ptr;
+
+    if ((dir = opendir(_path.c_str())) == nullptr) {
+      perror("Open dir error...");
+      exit(1);
+    }
+
+    while ((ptr = readdir(dir)) != nullptr) {
+      if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0 ||
+          ptr->d_type == 10)
+        continue;
+      else if (ptr->d_type == 4 || ptr->d_type == 8) {
+        string name = ptr->d_name;
+        if (name.find(".ktest") != string::npos)
+          _files.emplace_back(ptr->d_name);
+      }
+    }
+    closedir(dir);
   }
 
 private:
@@ -657,8 +696,9 @@ private:
   FuncChains*         funcChains;
 
 private:
-  mutex threadMutex;
-  int   threadCount;
+  clock_t start, end;
+  mutex   threadMutex;
+  int     threadCount;
 };
 
 #endif  // MODIFYLLVM_CONTROLLER_H
