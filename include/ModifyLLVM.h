@@ -344,28 +344,36 @@ public:
     newFile << kleeAssumeDecl << endl;
   }
 
-  void AddGlobalSymDecl(RegName* _reg) {
-    string _res = "@.str";
-    _res += symCount == 0 ? "" : "." + to_string(symCount);
-    _res += " = private unnamed_addr constant [";
-    _res += to_string(_reg->GetPureName().size() + 1);
-    _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
-    // cout << "debug: " << _res << endl;
-    globalSymDecls.emplace_back(_res, _reg);
+  int AddGlobalSymDecl(RegName* _reg) {
+    if (globalSyms.find(_reg->GetPureName()) == localSyms.end()) {
+      string _res = "@.str";
+      _res += symCount == 0 ? "" : "." + to_string(symCount);
+      _res += " = private unnamed_addr constant [";
+      _res += to_string(_reg->GetPureName().size() + 1);
+      _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
+      // cout << "debug: " << _res << endl;
+      globalSymDecls.emplace_back(_res, _reg);
+      globalSyms.emplace(_reg->GetPureName(), Symbol(symCount, _res));
+      symCount++;
+    }
 
-    symCount++;
+    return globalSyms[_reg->GetPureName()].GetNum();
   }
 
-  void AddLocalSymDecl(RegName* _reg) {
-    string _res = "@.str";
-    _res += symCount == 0 ? "" : "." + to_string(symCount);
-    _res += " = private unnamed_addr constant [";
-    _res += to_string(_reg->GetPureName().size() + 1);
-    _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
-    // cout << "debug: " << _res << endl;
-    localSymDecls.emplace_back(_res, _reg);
+  int AddLocalSymDecl(RegName* _reg) {
+    if (localSyms.find(_reg->GetPureName()) == localSyms.end()) {
+      string _res = "@.str";
+      _res += symCount == 0 ? "" : "." + to_string(symCount);
+      _res += " = private unnamed_addr constant [";
+      _res += to_string(_reg->GetPureName().size() + 1);
+      _res += " x i8] c\"" + _reg->GetPureName() + "\\00\"";
+      // cout << "debug: " << _res << endl;
+      localSymDecls.emplace_back(_res, _reg);
+      localSyms.emplace(_reg->GetPureName(), Symbol(symCount, _res));
+      symCount++;
+    }
 
-    symCount++;
+    return localSyms[_reg->GetPureName()].GetNum();
   }
 
   void AddLocalSymDecl(LLVMFunction _llvmFunc) {
@@ -378,7 +386,6 @@ public:
     if (regex_search(defineStr, funcRes, funcRex))
       func.Init(funcRes);
 
-    vector<RegName> funcArgs;
     for (auto arg : func.GetArgs()) {
       for (int i = 0; i < funcLines.size(); ++i) {
         if (funcLines[i].find("store " + arg.GetString() + ", ") !=
@@ -386,26 +393,26 @@ public:
           StoreInst storeInst;
           storeInst.Init(funcLines[i]);
           RegName* _dest = storeInst.GetDest();
+          int      num   = AddLocalSymDecl(_dest);
           // cout << "debug dest: " << _dest->GetString() << endl;
 
           vector<string> tmpLines;
           string         tmpLine;
-          tmpLines.push_back("  %\"bitcast_" + to_string(symCount) +
+          tmpLines.push_back("  %\"bitcast_" + to_string(num) +
                              "\" = bitcast " + _dest->GetString() + " to i8*");
           tmpLine = "  call void @klee_make_symbolic(i8* " +
-                    ("%\"bitcast_" + to_string(symCount) + "\"");
+                    ("%\"bitcast_" + to_string(num) + "\"");
           tmpLine += ", i64 " + to_string(_dest->GetSize() / 8);
           tmpLine += ", i8* getelementptr inbounds ([";
           tmpLine += to_string(_dest->GetPureName().size() + 1) + " x i8], [" +
                      to_string(_dest->GetPureName().size() + 1) +
                      " x i8]* @.str";
-          tmpLine += symCount == 0 ? "" : "." + to_string(symCount);
+          tmpLine += num == 0 ? "" : "." + to_string(num);
           tmpLine += ", i64 0, i64 0))";
           tmpLines.push_back(tmpLine);
 
           funcLines.insert(funcLines.begin() + i + 1, tmpLines.begin(),
                            tmpLines.end());
-          AddLocalSymDecl(_dest);
         }
       }
     }
@@ -428,6 +435,11 @@ public:
     }
   }
 
+  void AddGlobalSymbols(RegName* _reg) {
+    globalSymbols.emplace(_reg);
+    symCount++;
+  }
+
   void Refresh() {
     fileLines.assign(originFileLines.begin(), originFileLines.end());
     symCount = 0;
@@ -441,6 +453,7 @@ public:
 
   void RefreshLines() {
     fileLines = vector<string>(tmpFileLines);
+    globalSymbols.clear();
   }
 
 public:
@@ -451,6 +464,11 @@ private:
 
 private:
   unordered_map<string, LLVMFunction> llvmFunctions;
+  // store以及load的全局变量
+  set<RegName*> globalSymbols;
+
+  unordered_map<string, Symbol> globalSyms;
+  unordered_map<string, Symbol> localSyms;
 
   vector<pair<string, RegName*>> globalSymDecls;
   vector<pair<string, RegName*>> localSymDecls;
@@ -485,7 +503,11 @@ public:
   vector<string> ModifyStoreInst(StoreInst* _inst, LLVMFunction& _llFunction);
 
   vector<string> ModifyAssumes(LLVMFunction&      _llFunction,
-                               vector<KleeAssume> _assumes);
+                               vector<KleeAssume> _assumes,
+                               vector<string>     _newStr);
+
+  vector<string> AddArithGlobalSyms(LLVMFunction& _llFunction,
+                                    const string& _inst);
 
   LLVMFile* GetLLVMFile() {
     return llvmFile;

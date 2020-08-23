@@ -98,10 +98,15 @@ public:
   int GetCount() const {
     return count;
   }
+  string GetAttr() {
+    return attr;
+  }
 
   string GetType() {
     return type;
   }
+
+  string GetThisName();
 
   int GetSize() {
     int    size = 0;
@@ -315,6 +320,57 @@ private:
   RegName* source;
 };
 
+class LoadInst {
+public:
+  explicit LoadInst(const smatch& _instRexRes) {
+    source = new RegName(_instRexRes[4], _instRexRes[5], _instRexRes[6]);
+    dest   = new RegName(_instRexRes[3], _instRexRes[1], _instRexRes[2]);
+  }
+
+  string GetString() {
+    string _res(dest->GetName() + " = load " + dest->GetType() + ", " +
+                source->GetString());
+    return _res;
+  }
+
+  RegName* GetSource() {
+    return source;
+  }
+
+  RegName* GetDest() {
+    return dest;
+  }
+
+private:
+  regex    loadRex;
+  RegName* dest;
+  RegName* source;
+};
+
+class Symbol {
+public:
+  Symbol() : num(0) {}
+  Symbol(string _str) : num(0), str(std::move(_str)) {}
+  Symbol(int _num, string _str) : num(_num), str(std::move(_str)) {}
+
+  int GetNum() {
+    return num;
+  }
+
+  string GetStr(){
+    return str;
+  }
+
+  RegName GetSymbol(){
+    return symbol;
+  }
+
+private:
+  int     num;
+  string  str;
+  RegName symbol;
+};
+
 class Instruction {
 public:
   Instruction() {
@@ -328,6 +384,8 @@ public:
     funcCallRex = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
     storeRex =
         R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
+    loadRex =
+        R"((%|@)[\\"](.*)[\\"] = load (\w+), (\w+\**) (%|@)[\\"](.*)[\\"])";
   }
 
   void InitInst(const string& _inst) {
@@ -341,6 +399,9 @@ public:
     } else if (regex_search(_inst, instRexRes, storeRex)) {
       storeInst->Init(instRexRes);
       instType = 3;
+    } else if (regex_search(_inst, instRexRes, loadRex)) {
+      loadInst = new LoadInst(instRexRes);
+      instType = 4;
     }
   }
 
@@ -349,6 +410,7 @@ public:
       case 1: return arithOp->GetString();
       case 2: return funcCall->GetString();
       case 3: return storeInst->GetString();
+      case 4: return loadInst->GetString();
       default: return "No such inst type!";
     }
   }
@@ -358,6 +420,7 @@ public:
       case 1: return arithOp;
       case 2: return funcCall;
       case 3: return storeInst;
+      case 4: return loadInst;
     }
     return nullptr;
   }
@@ -389,11 +452,13 @@ private:
   ArithOp*   arithOp;
   FuncCall*  funcCall;
   StoreInst* storeInst;
+  LoadInst*  loadInst;
 
 private:
   regex arithInstRex;
   regex funcCallRex;
   regex storeRex;
+  regex loadRex;
 };
 
 class Function {
@@ -560,8 +625,8 @@ public:
     if (access(_outFolder.c_str(), 0) != -1) {
       if (access(_outPath.c_str(), 0) != -1)
         system(("rm -r " + _outPath).c_str());
-    } else mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
+    } else
+      mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     string command("klee --entry-point=" + _funcName +
                    " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
@@ -569,6 +634,19 @@ public:
     cout << endl;
     cout << command << endl;
     system(command.c_str());
+
+    ofstream out;
+    out.open(_outPath + "/inst.txt");
+    // 判断文件是否已经打开
+    if (out.is_open())
+      out << _inst << endl;
+  }
+
+  void extractInfo(const string& _funcName,
+                   const string& _folderName,
+                   const string& _instIndex,
+                   const string& _chainIndex) {
+    ;
   }
 
 private:

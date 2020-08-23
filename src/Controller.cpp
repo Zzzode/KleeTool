@@ -146,6 +146,7 @@ void Controller::FunChains(const string& folderName) {
         } else if (thisInst.GetType() == 3) {
           auto storeInst = static_cast<StoreInst*>(thisInst.GetInst());
 
+          // thisLLVMFile->AddGlobalSymbols(storeInst->GetDest());
           // 将store的全局变量符号化
           thisLLVMFunc.WriteNewLines(
               modifyLlvm.ModifyStoreInst(storeInst, thisLLVMFunc));
@@ -165,36 +166,40 @@ void Controller::FunChains(const string& folderName) {
       funcIndex++;
     }
     // 符号化参数和调用函数参数
-    Function& lastFunc = thisChain.ReturnChainStart();
-    // cout << "debug last function: " << lastFunc.GetFuncName() << endl;
+    Function& startFunc = thisChain.ReturnChainStart();
+    // cout << "debug last function: " << startFunc.GetFuncName() << endl;
     thisLLVMFile->AddLocalSymDecl(
-        thisLLVMFile->InitFuncLines(lastFunc.GetFuncName()));
+        thisLLVMFile->InitFuncLines(startFunc.GetFuncName()));
     thisLLVMFile->WriteGlobalSymDecl();
-
     // ！每个算数指令运行一次Klee
     string             endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
         thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
     LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
     thisLLVMFile->SetTmpLines();
+    vector<string> newStr =
+        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, assumes.front().GetInst());
+
     for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
       vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
                                     assumes.begin() + (3 * i + 3));
       thisLLVMFunc.WriteNewLines(
-          modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes));
+          modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
 
       thisLLVMFile->CreateFile("tmp.ll");
       // 调用`klee --entry-point=thisFuncName`
-      RunKlee(lastFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
+      RunKlee(startFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
               to_string(i), to_string(chainIndex));
+
+      // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
+      //
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
     }
-    // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
-    //
+
     thisLLVMFile->Refresh();
     exit(0);
     chainIndex++;
