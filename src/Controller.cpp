@@ -201,7 +201,7 @@ void Controller::FunChains(const string& folderName) {
     }
 
     thisLLVMFile->Refresh();
-    exit(0);
+    // exit(0);
     chainIndex++;
   }
 }

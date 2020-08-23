@@ -445,6 +445,8 @@ public:
     symCount = 0;
     globalSymDecls.clear();
     localSymDecls.clear();
+    globalSyms.clear();
+    localSyms.clear();
   }
 
   void SetTmpLines() {
