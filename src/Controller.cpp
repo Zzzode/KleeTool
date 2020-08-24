@@ -55,7 +55,8 @@ void Controller::Entry() {
   for (const auto& folderName : folderNames) {
     // 开始计时
     start = clock();
-    if (folderName.find(R"(.py)") != string::npos)
+    if (folderName.find(R"(.py)") != string::npos ||
+        folderName.find(R"(.sh)") != string::npos)
       continue;
 
     string thisPath = path + "/" + folderName;
@@ -67,7 +68,7 @@ void Controller::Entry() {
     // 结束计时
     end = clock();
     // 输出时间
-    double endtime = (double)(end - start) / CLOCKS_PER_SEC;
+    double   endtime = (double)(end - start) / CLOCKS_PER_SEC;
     ofstream out(path + "/" + folderName + "/time.txt");
     out << "time = " << endtime * 1000 << " ms" << endl;
   }

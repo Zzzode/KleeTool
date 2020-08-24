@@ -666,7 +666,7 @@ public:
     }
   }
 
-  void GetKtestFile(string& _path, vector<string>& _files) {
+  static void GetKtestFile(string& _path, vector<string>& _files) {
     DIR*           dir;
     struct dirent* ptr;
 
