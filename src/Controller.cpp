@@ -7,13 +7,13 @@
 
 #include <unistd.h>
 
-void Controller::ParseJson(const string& folderName) {
+bool Controller::ParseJson(const string& folderName) {
   //从文件中读取，保证当前文件夹有.json文件
   string   jsonPath = path + "/" + folderName + "/" + folderName + ".json";
   ifstream inFile(jsonPath, ios::in);
   if (!inFile.is_open()) {
     cout << "Error opening file\n";
-    exit(0);
+    return false;
   }
 
   // 以二进制形式读取json文件内容
@@ -29,6 +29,8 @@ void Controller::ParseJson(const string& folderName) {
   // 解析json及inst
   document.Parse(buf.str().c_str());
   inFile.close();
+
+  return true;
 }
 
 void Controller::GetFiles() {
@@ -62,15 +64,15 @@ void Controller::Entry() {
     string thisPath = path + "/" + folderName;
     cout << "This path is " << thisPath << endl;
 
-    ParseJson(folderName);
-    FunChains(folderName);
+    if (ParseJson(folderName))
+      FunChains(folderName);
 
     // 结束计时
     end = clock();
     // 输出时间
     double   endtime = (double)(end - start) / CLOCKS_PER_SEC;
     ofstream out(path + "/" + folderName + "/time.txt");
-    out << "time = " << endtime * 1000 << " ms" << endl;
+    out << "time = " << endtime << " s" << endl;
   }
 }
 
@@ -92,6 +94,7 @@ void Controller::FunChains(const string& folderName) {
     FuncChain thisChain = funcChains->GetChain(chainIndex);
     thisChain.InitFunc(funChain.Size());
 
+    cout << "debug: 1" << endl;
     // TODO 可以在这里定位文件中的调用链
     // 一次定位的目的是减少IO耗时 但实际上最好的方法是一步到位
     // LLVMFuncChain thisLLVMChain = thisLLVMFile->GetLLVMChain(chainIndex);
@@ -171,24 +174,31 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFile->ReturnLLFunc(funcName, thisLLVMFunc);
 
       thisChain.ReturnFunction(funcIndex, thisFunc);
-
       funcIndex++;
     }
-    // 符号化参数和调用函数参数
+    cout << "debug: 3" << endl;
+    // 找到调用链的初始函数
     Function& startFunc = thisChain.ReturnChainStart();
-    // cout << "debug last function: " << startFunc.GetFuncName() << endl;
+    // 添加全局sym和局部sym
     thisLLVMFile->AddLocalSymDecl(
         thisLLVMFile->InitFuncLines(startFunc.GetFuncName()));
-    thisLLVMFile->WriteGlobalSymDecl();
-    // ！每个算数指令运行一次Klee
+    // thisLLVMFile->WriteGlobalSymDecl();
+
+    // 找到调用链的末端函数
+    cout << "debug: 3.1" << endl;
     string             endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
         thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
+    cout << "debug: 3.2" << endl;
     LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
     thisLLVMFile->SetTmpLines();
+    cout << "debug: 3.3" << endl;
     vector<string> newStr =
         modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, assumes.front().GetInst());
 
+    // thisLLVMFile->WriteGlobalSymDecl();
+    // ！每个算数指令运行一次Klee
+    cout << "debug: 4" << endl;
     for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
       vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
                                     assumes.begin() + (3 * i + 3));
@@ -196,6 +206,8 @@ void Controller::FunChains(const string& folderName) {
           modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
+      // 插入全局变量的符号化声明
+      thisLLVMFile->WriteGlobalSymDecl();
 
       thisLLVMFile->CreateFile("tmp.ll");
       // 调用`klee --entry-point=thisFuncName`
@@ -208,7 +220,7 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
     }
-    exit(0);
+    // exit(0);
     thisLLVMFile->Refresh();
     chainIndex++;
   }

@@ -132,6 +132,9 @@ public:
     res  = new RegName;
     lReg = new RegName;
     rReg = new RegName;
+
+    varRex      = R"((%|@)[\\"](.*)[\\"])";
+    constantRex = R"(\w+)";
   }
 
   ArithOp(ArithOp* inst) {
@@ -141,9 +144,18 @@ public:
   void Init(const smatch& instRexRes) {
     op = instRexRes[3];
 
-    res  = new RegName(instRexRes[4], instRexRes[1], instRexRes[2]);
-    lReg = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
-    rReg = new RegName(instRexRes[4], instRexRes[7], instRexRes[8]);
+    res = new RegName(instRexRes[4], instRexRes[1], instRexRes[2]);
+
+    smatch leftRes, rightRes;
+    string leftOp(instRexRes[5]), rightOp(instRexRes[6]);
+    if (regex_search(leftOp, leftRes, varRex))
+      lReg = new RegName(instRexRes[4], leftRes[1], leftRes[2]);
+    else if (regex_search(leftOp, leftRes, constantRex))
+      lReg = new RegName(instRexRes[4], "constant", leftRes[1]);
+    if (regex_search(rightOp, rightRes, varRex))
+      rReg = new RegName(instRexRes[4], rightRes[1], rightRes[2]);
+    else if (regex_search(rightOp, rightRes, constantRex))
+      rReg = new RegName(instRexRes[4], "constant", rightRes[1]);
   }
 
   string GetString() {
@@ -167,6 +179,9 @@ public:
   }
 
 private:
+  regex varRex;
+  regex constantRex;
+
   string op;
 
   RegName* res;
@@ -379,13 +394,35 @@ public:
     funcCall  = new FuncCall;
     storeInst = new StoreInst;
 
-    arithInstRex =
-        R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (%|@)[\\"](.*)[\\"], (%|@)[\\"](.*)[\\"])";
-    funcCallRex = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
+    arithInstRex = R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (.*), (.*))";
+    funcCallRex  = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
     storeRex =
         R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
     loadRex =
         R"((%|@)[\\"](.*)[\\"] = load (\w+), (\w+\**) (%|@)[\\"](.*)[\\"])";
+  }
+
+  explicit Instruction(const string& _inst) {
+    arithInstRex = R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (.*), (.*))";
+    funcCallRex  = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
+    storeRex =
+        R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
+    loadRex =
+        R"((%|@)[\\"](.*)[\\"] = load (\w+), (\w+\**) (%|@)[\\"](.*)[\\"])";
+    smatch instRexRes;
+    if (regex_search(_inst, instRexRes, arithInstRex)) {
+      arithOp->Init(instRexRes);
+      instType = 1;
+    } else if (regex_search(_inst, instRexRes, funcCallRex)) {
+      funcCall->Init(instRexRes);
+      instType = 2;
+    } else if (regex_search(_inst, instRexRes, storeRex)) {
+      storeInst->Init(instRexRes);
+      instType = 3;
+    } else if (regex_search(_inst, instRexRes, loadRex)) {
+      loadInst = new LoadInst(instRexRes);
+      instType = 4;
+    }
   }
 
   void InitInst(const string& _inst) {
@@ -449,9 +486,9 @@ private:
   // 1:arith 2: func call 3: store
   int instType;
 
-  ArithOp*   arithOp;
-  FuncCall*  funcCall;
-  StoreInst* storeInst;
+  ArithOp*   arithOp{};
+  FuncCall*  funcCall{};
+  StoreInst* storeInst{};
   LoadInst*  loadInst;
 
 private:
@@ -606,7 +643,7 @@ public:
 
   void GetFiles();
 
-  void ParseJson(const string& folderName);
+  bool ParseJson(const string& folderName);
 
   void FunChains(const string& folderName);
 
@@ -657,22 +694,23 @@ public:
     out.close();
     // 获取所有ktest文件名
     vector<string> ktestFiles;
-    GetKtestFile(_outPath, ktestFiles);
-    for (int i = 0; i < ktestFiles.size(); i++) {
-      string command("ktest-tool " + _outPath + "/" + ktestFiles[i] + " > " +
-                     _outPath + "/res" + to_string(i) + ".txt");
-      system(command.c_str());
-      // cout << command << endl;
+    if (GetKtestFile(_outPath, ktestFiles)) {
+      for (int i = 0; i < ktestFiles.size(); i++) {
+        string command("ktest-tool " + _outPath + "/" + ktestFiles[i] + " > " +
+                       _outPath + "/res" + to_string(i) + ".txt");
+        system(command.c_str());
+        // cout << command << endl;
+      }
     }
   }
 
-  static void GetKtestFile(string& _path, vector<string>& _files) {
+  static bool GetKtestFile(string& _path, vector<string>& _files) {
     DIR*           dir;
     struct dirent* ptr;
 
     if ((dir = opendir(_path.c_str())) == nullptr) {
       perror("Open dir error...");
-      exit(1);
+      return false;
     }
 
     while ((ptr = readdir(dir)) != nullptr) {
@@ -686,6 +724,7 @@ public:
       }
     }
     closedir(dir);
+    return true;
   }
 
 private:
