@@ -666,8 +666,8 @@ public:
       mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     // 创建并执行指令
-    string command("klee --entry-point=" + _funcName +
-                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
+    string command("klee  --entry-point=" + _funcName +
+                   "  --output-dir=" + _outPath + "  " + _path + "/tmp.ll");
     cout << endl;
     cout << command << endl;
     thread runShell([&] { system(command.c_str()); });
@@ -676,9 +676,9 @@ public:
     for (int i = 0; i < 1000; i++)
       if (!runShell.joinable())
         break;
-      for (int j = 0; j < 10000; j++)
-        for (int k = 0; k < 10000; k++)
-          ;
+    for (int j = 0; j < 10000; j++)
+      for (int k = 0; k < 10000; k++)
+        ;
 
     if (runShell.joinable())
       system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
