@@ -12,7 +12,7 @@ bool Controller::ParseJson(const string& folderName) {
   string   jsonPath = path + "/" + folderName + "/" + folderName + ".json";
   ifstream inFile(jsonPath, ios::in);
   if (!inFile.is_open()) {
-    cout << "Error opening file\n";
+    cout << "No json file\n";
     return false;
   }
 
@@ -56,7 +56,7 @@ void Controller::Entry() {
   GetFiles();
   for (const auto& folderName : folderNames) {
     // 开始计时
-    start = clock();
+    start_t = clock();
     if (folderName.find(R"(.py)") != string::npos ||
         folderName.find(R"(.sh)") != string::npos)
       continue;
@@ -68,9 +68,9 @@ void Controller::Entry() {
       FunChains(folderName);
 
     // 结束计时
-    end = clock();
+    end_t = clock();
     // 输出时间
-    double   endtime = (double)(end - start) / CLOCKS_PER_SEC;
+    double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
     ofstream out(path + "/" + folderName + "/time.txt");
     out << "time = " << endtime << " s" << endl;
   }

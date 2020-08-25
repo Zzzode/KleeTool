@@ -4,6 +4,8 @@
 #ifndef MODIFYLLVM_CONTROLLER_H
 #define MODIFYLLVM_CONTROLLER_H
 
+#include <chrono>
+//#include <csignal>
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
@@ -647,8 +649,6 @@ public:
 
   void FunChains(const string& folderName);
 
-  void ThreadControllor();
-
   void RunKlee(const string& _funcName,
                const string& _folderName,
                const string& _inst,
@@ -665,12 +665,20 @@ public:
     } else
       mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
+    // 创建并执行指令
     string command("klee --entry-point=" + _funcName +
                    " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
-
     cout << endl;
     cout << command << endl;
-    system(command.c_str());
+    thread runShell([&] { system(command.c_str()); });
+    runShell.join();
+    // system(command.c_str());
+    for (int i = 0; i < 3e8; ++i) {
+      if (!runShell.joinable())
+        break;
+    }
+    if (runShell.joinable())
+      system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
 
     ExtractInfo(_funcName, _folderName, _inst, _instIndex, _chainIndex);
   }
@@ -709,7 +717,7 @@ public:
     struct dirent* ptr;
 
     if ((dir = opendir(_path.c_str())) == nullptr) {
-      perror("Open dir error...");
+      perror("No klee result ...");
       return false;
     }
 
@@ -735,7 +743,7 @@ private:
   FuncChains*         funcChains;
 
 private:
-  clock_t start, end;
+  clock_t start_t{}, end_t{};
   mutex   threadMutex;
   int     threadCount;
 };
