@@ -56,7 +56,7 @@ void Controller::Entry() {
   GetFiles();
   for (const auto& folderName : folderNames) {
     // 开始计时
-    start_t = clock();
+
     if (folderName.find(R"(.py)") != string::npos ||
         folderName.find(R"(.sh)") != string::npos)
       continue;
@@ -64,15 +64,20 @@ void Controller::Entry() {
     string thisPath = path + "/" + folderName;
     cout << "This path is " << thisPath << endl;
 
-    if (ParseJson(folderName))
-      FunChains(folderName);
+    // 只有没有跑完的数据会接下去执行
+    if (access((thisPath + "/time.txt").c_str(), 0) == -1) {
+      start_t = clock();
+      // 存在json
+      if (ParseJson(folderName))
+        FunChains(folderName);
 
-    // 结束计时
-    end_t = clock();
-    // 输出时间
-    double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
-    ofstream out(path + "/" + folderName + "/time.txt");
-    out << "time = " << endtime << " s" << endl;
+      // 结束计时
+      end_t = clock();
+      // 输出时间
+      double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+      ofstream out(path + "/" + folderName + "/time.txt");
+      out << "time = " << endtime << " s" << endl;
+    }
   }
 }
 

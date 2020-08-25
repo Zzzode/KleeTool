@@ -671,7 +671,7 @@ public:
     cout << endl;
     cout << command << endl;
     thread runShell([&] { system(command.c_str()); });
-    runShell.join();
+    runShell.detach();
     // system(command.c_str());
     for (int i = 0; i < 3e8; ++i) {
       if (!runShell.joinable())
