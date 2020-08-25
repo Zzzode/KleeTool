@@ -666,8 +666,8 @@ public:
       mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     // 创建并执行指令
-    string command("klee  --entry-point=" + _funcName +
-                   "  --output-dir=" + _outPath + "  " + _path + "/tmp.ll");
+    string command("klee --entry-point=" + _funcName +
+                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     cout << endl;
     cout << command << endl;
     thread runShell([&] { system(command.c_str()); });
