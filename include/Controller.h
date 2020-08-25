@@ -673,10 +673,13 @@ public:
     thread runShell([&] { system(command.c_str()); });
     runShell.detach();
     // system(command.c_str());
-    for (int i = 0; i < 3e8; ++i) {
+    for (int i = 0; i < 1000; i++)
       if (!runShell.joinable())
         break;
-    }
+      for (int j = 0; j < 10000; j++)
+        for (int k = 0; k < 10000; k++)
+          ;
+
     if (runShell.joinable())
       system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
 
