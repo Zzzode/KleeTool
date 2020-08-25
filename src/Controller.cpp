@@ -33,13 +33,13 @@ bool Controller::ParseJson(const string& folderName) {
   return true;
 }
 
-void Controller::GetFiles() {
+bool Controller::GetFiles() {
   DIR*           dir;
   struct dirent* ptr;
 
   if ((dir = opendir(path.c_str())) == nullptr) {
     perror("Open dir error...");
-    exit(1);
+    return false;
   }
 
   while ((ptr = readdir(dir)) != nullptr) {
@@ -50,33 +50,36 @@ void Controller::GetFiles() {
       folderNames.emplace_back(ptr->d_name);
   }
   closedir(dir);
+
+  return true;
 }
 
 void Controller::Entry() {
-  GetFiles();
-  for (const auto& folderName : folderNames) {
-    // 开始计时
+  if(GetFiles()) {
+    for (const auto& folderName : folderNames) {
+      // 开始计时
 
-    if (folderName.find(R"(.py)") != string::npos ||
-        folderName.find(R"(.sh)") != string::npos)
-      continue;
+      if (folderName.find(R"(.py)") != string::npos ||
+          folderName.find(R"(.sh)") != string::npos)
+        continue;
 
-    string thisPath = path + "/" + folderName;
-    cout << "This path is " << thisPath << endl;
+      string thisPath = path + "/" + folderName;
+      cout << "This path is " << thisPath << endl;
 
-    // 只有没有跑完的数据会接下去执行
-    if (access((thisPath + "/time.txt").c_str(), 0) == -1) {
-      start_t = clock();
-      // 存在json
-      if (ParseJson(folderName))
-        FunChains(folderName);
+      // 只有没有跑完的数据会接下去执行
+      if (access((thisPath + "/time.txt").c_str(), 0) == -1) {
+        start_t = clock();
+        // 存在json
+        if (ParseJson(folderName))
+          FunChains(folderName);
 
-      // 结束计时
-      end_t = clock();
-      // 输出时间
-      double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
-      ofstream out(path + "/" + folderName + "/time.txt");
-      out << "time = " << endtime << " s" << endl;
+        // 结束计时
+        end_t = clock();
+        // 输出时间
+        double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+        ofstream out(path + "/" + folderName + "/time.txt");
+        out << "time = " << endtime << " s" << endl;
+      }
     }
   }
 }

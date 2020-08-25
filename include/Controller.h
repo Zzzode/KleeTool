@@ -643,7 +643,7 @@ public:
 
   void Entry();
 
-  void GetFiles();
+  bool GetFiles();
 
   bool ParseJson(const string& folderName);
 
