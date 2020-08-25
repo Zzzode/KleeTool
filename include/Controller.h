@@ -136,7 +136,7 @@ public:
     rReg = new RegName;
 
     varRex      = R"((%|@)[\\"](.*)[\\"])";
-    constantRex = R"(\w+)";
+    constantRex = R"((\w+))";
   }
 
   ArithOp(ArithOp* inst) {
@@ -680,8 +680,9 @@ public:
       for (int k = 0; k < 10000; k++)
         ;
 
-    if (runShell.joinable())
-      system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
+    // if (runShell.joinable())
+    //   system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
+    system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
 
     ExtractInfo(_funcName, _folderName, _inst, _instIndex, _chainIndex);
   }
