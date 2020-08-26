@@ -8,13 +8,27 @@
 #include <unistd.h>
 
 bool Controller::ParseJson(const string& folderName) {
-  //从文件中读取，保证当前文件夹有.json文件
-  string   jsonPath = path + "/" + folderName + "/" + folderName + ".json";
-  ifstream inFile(jsonPath, ios::in);
-  if (!inFile.is_open()) {
+  string thisPath = path + "/" + folderName;
+  vector<string> jsonFiles;
+  string jsonPath = path + "/" + folderName + "/" + folderName + ".json";
+  // 如果没有json文件
+  if(!GetTargetFiles(thisPath, jsonFiles, ".json")){
     cout << "No json file\n";
     return false;
   }
+  if(jsonFiles.empty()){
+    cout << "No json file\n";
+    return false;
+  }
+
+  for(int i = 0; i < jsonFiles.size(); i++){
+    if (jsonFiles[i].find("_wasm.json") != string::npos || i == jsonFiles.size() - 1){
+      jsonPath = path + "/" + folderName + "/" + jsonFiles[i];
+      break;
+    }
+  }
+  //从文件中读取，保证当前文件夹有.json文件
+  ifstream inFile(jsonPath, ios::in);
 
   // 以二进制形式读取json文件内容
   ostringstream buf;
@@ -55,10 +69,8 @@ bool Controller::GetFiles() {
 }
 
 void Controller::Entry() {
-  if(GetFiles()) {
+  if (GetFiles()) {
     for (const auto& folderName : folderNames) {
-      // 开始计时
-
       if (folderName.find(R"(.py)") != string::npos ||
           folderName.find(R"(.sh)") != string::npos)
         continue;
@@ -68,6 +80,7 @@ void Controller::Entry() {
 
       // 只有没有跑完的数据会接下去执行
       if (access((thisPath + "/time.txt").c_str(), 0) == -1) {
+        // 开始计时
         start_t = clock();
         // 存在json
         if (ParseJson(folderName))

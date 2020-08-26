@@ -706,7 +706,7 @@ public:
     out.close();
     // 获取所有ktest文件名
     vector<string> ktestFiles;
-    if (GetKtestFile(_outPath, ktestFiles)) {
+    if (GetTargetFiles(_outPath, ktestFiles, ".ktest")) {
       for (int i = 0; i < ktestFiles.size(); i++) {
         string command("ktest-tool " + _outPath + "/" + ktestFiles[i] + " > " +
                        _outPath + "/res" + to_string(i) + ".txt");
@@ -716,7 +716,8 @@ public:
     }
   }
 
-  static bool GetKtestFile(string& _path, vector<string>& _files) {
+  static bool
+  GetTargetFiles(string& _path, vector<string>& _files, const string& _name) {
     DIR*           dir;
     struct dirent* ptr;
 
@@ -731,7 +732,7 @@ public:
         continue;
       else if (ptr->d_type == 4 || ptr->d_type == 8) {
         string name = ptr->d_name;
-        if (name.find(".ktest") != string::npos)
+        if (name.find(_name) != string::npos)
           _files.emplace_back(ptr->d_name);
       }
     }
