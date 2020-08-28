@@ -135,8 +135,8 @@ public:
     lReg = new RegName;
     rReg = new RegName;
 
-    varRex      = R"((%|@)[\\"](.*)[\\"])";
-    constantRex = R"((\w+))";
+    varRex      = R"((%|@)[\\"]*([\-\w\.]*)[\\"]*)";
+    constantRex = R"(([\-\w]*))";
   }
 
   ArithOp(ArithOp* inst) {
@@ -301,7 +301,7 @@ class StoreInst {
 public:
   StoreInst() {
     storeRex =
-        R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
+        R"(store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     dest   = new RegName;
     source = new RegName;
   }
@@ -396,21 +396,21 @@ public:
     funcCall  = new FuncCall;
     storeInst = new StoreInst;
 
-    arithInstRex = R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (.*), (.*))";
+    arithInstRex = R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = (\w+) (\w+) (.*), (.*))";
     funcCallRex  = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
     storeRex =
-        R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
+        R"(store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     loadRex =
-        R"((%|@)[\\"](.*)[\\"] = load (\w+), (\w+\**) (%|@)[\\"](.*)[\\"])";
+        R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = load (\w+), (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
   }
 
   explicit Instruction(const string& _inst) {
-    arithInstRex = R"((%|@)[\\"](.*)[\\"] = (\w+) (\w+) (.*), (.*))";
+    arithInstRex = R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = (\w+) (\w+) (.*), (.*))";
     funcCallRex  = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
     storeRex =
-        R"(store (\w+) (%|@)[\\"](.*)[\\"], (\w+\**) (%|@)[\\"](.*)[\\"])";
+        R"(store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     loadRex =
-        R"((%|@)[\\"](.*)[\\"] = load (\w+), (\w+\**) (%|@)[\\"](.*)[\\"])";
+        R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = load (\w+), (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     smatch instRexRes;
     if (regex_search(_inst, instRexRes, arithInstRex)) {
       arithOp->Init(instRexRes);
@@ -717,7 +717,7 @@ public:
   }
 
   static bool
-  GetTargetFiles(string& _path, vector<string>& _files, const string& _name) {
+  GetTargetFiles(const string& _path, vector<string>& _files, const string& _name) {
     DIR*           dir;
     struct dirent* ptr;
 

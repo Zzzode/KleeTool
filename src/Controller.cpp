@@ -8,21 +8,22 @@
 #include <unistd.h>
 
 bool Controller::ParseJson(const string& folderName) {
-  string thisPath = path + "/" + folderName;
+  string         thisPath = path + "/" + folderName;
   vector<string> jsonFiles;
   string jsonPath = path + "/" + folderName + "/" + folderName + ".json";
   // 如果没有json文件
-  if(!GetTargetFiles(thisPath, jsonFiles, ".json")){
+  if (!GetTargetFiles(thisPath, jsonFiles, ".json")) {
     cout << "No json file\n";
     return false;
   }
-  if(jsonFiles.empty()){
+  if (jsonFiles.empty()) {
     cout << "No json file\n";
     return false;
   }
 
-  for(int i = 0; i < jsonFiles.size(); i++){
-    if (jsonFiles[i].find("_wasm.json") != string::npos || i == jsonFiles.size() - 1){
+  for (int i = 0; i < jsonFiles.size(); i++) {
+    if (jsonFiles[i].find("_wasm.json") != string::npos ||
+        i == jsonFiles.size() - 1) {
       jsonPath = path + "/" + folderName + "/" + jsonFiles[i];
       break;
     }
@@ -102,7 +103,26 @@ void Controller::FunChains(const string& folderName) {
 
   // document.Size为调用链数量
   funcChains->InitChains(document.Size());
-  ModifyLLVM modifyLlvm(folderName, path + "/" + folderName, document.Size());
+  // 增加EOS平台的ll文件路径检测
+  vector<string> llFiles;
+  string         llFileName;
+  if (!GetTargetFiles(path + "/" + folderName, llFiles, "ll")) {
+    cout << "No llvm file\n";
+    return;
+  }
+  if (llFiles.empty()) {
+    cout << "No ll file\n";
+    return;
+  }
+  for (int i = 0; i < llFiles.size(); i++) {
+    if (llFiles[i].find("_wasm.ll") != string::npos ||
+        i == llFiles.size() - 1) {
+      llFileName = llFiles[i];
+      break;
+    }
+  }
+  // 初始化modify llvm相关
+  ModifyLLVM modifyLlvm(llFileName, path + "/" + llFileName, document.Size());
   LLVMFile*  thisLLVMFile = modifyLlvm.GetLLVMFile();
   cout << "file name = " << thisLLVMFile->GetFileName() << endl;
 
@@ -143,9 +163,8 @@ void Controller::FunChains(const string& folderName) {
         assert(inst.IsObject());
         Instruction thisInst = thisFunc.GetInst(instNum);
         thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
-
         // 打印当前指令
-        // cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
+        cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
 
         // 当指令为算数操作时用klee_assume
         // TODO 全局变量需要符号化
@@ -189,6 +208,7 @@ void Controller::FunChains(const string& folderName) {
         thisFunc.ReturnInst(instNum, thisInst);
         instNum++;
       }
+      cout << "debug: 2" << endl;
       // 替换文件中当前函数
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
