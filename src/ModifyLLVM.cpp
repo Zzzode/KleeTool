@@ -18,61 +18,94 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
   vector<string> funcLines(_llFunction.GetNewLines());
   vector<string> _res;
   cout << "debug: 4.1" << endl;
+  // init this instruction
+  Instruction thisInst;
+  thisInst.InitInst(_inst);
+  auto thisArithInst = static_cast<ArithOp*>(thisInst.GetInst());
+  // search this instruction location in this function lines
   for (int i = 0; i < funcLines.size(); ++i) {
     string funcLine = funcLines[i];
     if (funcLine.find(_inst) != string::npos) {
       cout << "debug: 4.2" << endl;
-      // 遍历前两行寻找load的全局变量
-      Instruction leftLoadInst, rightLoadInst;
-      // 右操作数
-      rightLoadInst.InitInst(funcLines[i - 1]);
-      auto     rightInst   = static_cast<LoadInst*>(rightLoadInst.GetInst());
-      RegName* rightSource = rightInst->GetSource();
-      // 左操作数
-      RegName* leftSource = nullptr;
-      if (funcLines[i - 2].find(" = load") != string::npos) {
-        leftLoadInst.InitInst(funcLines[i - 2]);
-        auto leftInst = static_cast<LoadInst*>(leftLoadInst.GetInst());
-        leftSource    = leftInst->GetSource();
-      } else if (funcLines[i - 3].find(" = load") != string::npos) {
-        leftLoadInst.InitInst(funcLines[i - 3]);
-        auto leftInst = static_cast<LoadInst*>(leftLoadInst.GetInst());
-        leftSource    = leftInst->GetSource();
-      }
+      // 初始化临时变量
+      Instruction lLoadInst, rLoadInst;
+      RegName*    rightSource = nullptr;
+      RegName*    leftSource  = nullptr;
+      // 判断左右操作数是否存在
+      if (thisArithInst->GetReg(2)->GetAttr() != "constant") {
+        for (int j = 1; j <= 4; j++) {
+          if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName()) !=
+              string::npos) {
+            if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName() +
+                                      " = load") != string::npos)
+              lLoadInst.InitInst(funcLines[i - j]);
+            else if (funcLines[i - j - 1].find(
+                         thisArithInst->GetReg(2)->GetName() + " = load") !=
+                     string::npos)
+              lLoadInst.InitInst(funcLines[i - j - 1]);
+            else
+              break;
 
-      if (rightSource->GetAttr() == "@") {
-        // llvmFile->AddGlobalSymbols(rightSource);
-        int num = llvmFile->AddGlobalSymDecl(rightSource);
+            auto lInst = static_cast<LoadInst*>(lLoadInst.GetInst());
+            leftSource = lInst->GetSource();
+          }
+        }
+        if (leftSource != nullptr) {
+          if (leftSource->GetAttr() == "@") {
+            // llvmFile->AddGlobalSymbols(leftSource);
+            int num = llvmFile->AddGlobalSymDecl(leftSource);
 
-        string newStr(R"(  call void @klee_make_symbolic(i8* bitcast )");
-        newStr += "(" + rightSource->GetString() + " to i8*), i64 ";
-        newStr += to_string(rightSource->GetSize() / 8) +
-                  ", i8* getelementptr inbounds ([";
-        unsigned int _size = rightSource->GetPureName().size() + 1;
-        newStr +=
-            to_string(_size) + " x i8], [" + to_string(_size) + " x i8]* @.str";
-        newStr += num == 0 ? "" : "." + to_string(num);
-        newStr += ", i64 0, i64 0))";
-        _res.push_back(newStr);
-      }
-      if (leftSource != nullptr) {
-        if (leftSource->GetAttr() == "@" &&
-            leftSource->GetPureName() != rightSource->GetPureName()) {
-          // llvmFile->AddGlobalSymbols(leftSource);
-          int num = llvmFile->AddGlobalSymDecl(leftSource);
-
-          string newStr(R"(  call void @klee_make_symbolic(i8* bitcast )");
-          newStr += "(" + leftSource->GetString() + " to i8*), i64 ";
-          newStr += to_string(leftSource->GetSize() / 8) +
-                    ", i8* getelementptr inbounds ([";
-          unsigned int _size = leftSource->GetPureName().size() + 1;
-          newStr += to_string(_size) + " x i8], [" + to_string(_size) +
-                    " x i8]* @.str";
-          newStr += num == 0 ? "" : "." + to_string(num);
-          newStr += ", i64 0, i64 0))";
-          _res.push_back(newStr);
+            string newStr(R"(  call void @klee_make_symbolic(i8* bitcast )");
+            newStr += "(" + leftSource->GetString() + " to i8*), i64 ";
+            newStr += to_string(leftSource->GetSize() / 8) +
+                      ", i8* getelementptr inbounds ([";
+            unsigned int _size = leftSource->GetPureName().size() + 1;
+            newStr += to_string(_size) + " x i8], [" + to_string(_size) +
+                      " x i8]* @.str";
+            newStr += num == 0 ? "" : "." + to_string(num);
+            newStr += ", i64 0, i64 0))";
+            _res.push_back(newStr);
+          }
         }
       }
+      if (thisArithInst->GetReg(3)->GetAttr() != "constant") {
+        for (int j = 1; j <= 4; j++) {
+          if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName()) !=
+              string::npos) {
+            if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName() +
+                                      " = load") != string::npos)
+              rLoadInst.InitInst(funcLines[i - j]);
+            else if (funcLines[i - j - 1].find(
+                         thisArithInst->GetReg(3)->GetName() + " = load") !=
+                     string::npos)
+              rLoadInst.InitInst(funcLines[i - j - 1]);
+            else
+              break;
+
+            auto rInst  = static_cast<LoadInst*>(rLoadInst.GetInst());
+            rightSource = rInst->GetSource();
+          }
+        }
+        if (rightSource != nullptr) {
+          if (rightSource->GetAttr() == "@" &&
+              rightSource->GetPureName() != leftSource->GetPureName()) {
+            // llvmFile->AddGlobalSymbols(rightSource);
+            int num = llvmFile->AddGlobalSymDecl(rightSource);
+
+            string newStr(R"(  call void @klee_make_symbolic(i8* bitcast )");
+            newStr += "(" + rightSource->GetString() + " to i8*), i64 ";
+            newStr += to_string(rightSource->GetSize() / 8) +
+                      ", i8* getelementptr inbounds ([";
+            unsigned int _size = rightSource->GetPureName().size() + 1;
+            newStr += to_string(_size) + " x i8], [" + to_string(_size) +
+                      " x i8]* @.str";
+            newStr += num == 0 ? "" : "." + to_string(num);
+            newStr += ", i64 0, i64 0))";
+            _res.push_back(newStr);
+          }
+        }
+      }
+      cout << "debug: 4.3" << endl;
       break;
     }
   }

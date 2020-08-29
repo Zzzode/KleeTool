@@ -162,7 +162,7 @@ public:
   }
 
   void Init(const smatch& instRexRes) {
-    op            = instRexRes[3];
+    op            = instRexRes[3].str();
     bool hasQuote = false;
     if (instRexRes[0].str().find("\"") != string::npos)
       hasQuote = true;
@@ -446,6 +446,7 @@ public:
         R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = load (\w+), (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     smatch instRexRes;
     if (regex_search(_inst, instRexRes, arithInstRex)) {
+      // string op = instRexRes[3];
       arithOp->Init(instRexRes);
       instType = 1;
     } else if (regex_search(_inst, instRexRes, funcCallRex)) {

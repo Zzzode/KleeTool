@@ -263,7 +263,7 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
       cout << "debug: 7" << endl;
-      // exit(0);
+       exit(0);
     }
     // exit(0);
     thisLLVMFile->Refresh();
