@@ -382,7 +382,7 @@ public:
     vector<string> funcLines = _llvmFunc.GetNewLines();
     string         defineStr = funcLines.front();
     // cout << "debug: " << defineStr << endl;
-    regex funcRex(R"(define (.*) @\"(.*)\"\((.*)\))");
+    regex funcRex(R"(define[ interal]* (.*) [@\"]*(.*)[\"]*\((.*)\))");
     if (regex_search(defineStr, funcRes, funcRex))
       func.Init(funcRes);
 
@@ -429,6 +429,10 @@ public:
           lineNum = i + 1;
         }
       }
+    }
+    if (lineNum == 2){
+      while (!fileLines[lineNum].empty())
+        lineNum++;
     }
     for (const auto& _tmp : localSymDecls) {
       fileLines.insert(fileLines.begin() + (++lineNum), _tmp.first);

@@ -222,12 +222,12 @@ public:
   }
 
   void Init(const smatch& instRexRes) {
-    string _type = instRexRes[3].str();
-    bool hasQuote = false;
-    if(instRexRes[0].str().find("\"") != string::npos)
+    string _type    = instRexRes[3].str();
+    bool   hasQuote = false;
+    if (instRexRes[0].str().find("\"") != string::npos)
       hasQuote = true;
-    callFunc     = new RegName(_type, "@", instRexRes[4].str(), hasQuote);
-    callRes      = new RegName(_type, instRexRes[1].str());
+    callFunc = new RegName(_type, "@", instRexRes[4].str(), hasQuote);
+    callRes  = new RegName(_type, instRexRes[1].str());
 
     string tmpArgs = instRexRes[5];
     smatch argsRexRes;
@@ -280,8 +280,9 @@ public:
   FuncDefine() {
     func             = new RegName;
     funcArgsRex      = R"((\w+) [%@\\"]*(\w*[\.\d]*)[\\"]*[, ]*)";
-    funcArgsConstRex = R"((\w+) (\w+)[, ]*)";
-    funcArgsRegRex   = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
+    funcArgsConstRex = R"((\w+) (\w+))";
+    funcArgsRegRex   = R"((\w+) (@|%)[\\"](.*)[\\"])";
+    funcArgsNoVar    = R"((\w+))";
   }
 
   void Init(const smatch& instRexRes) {
@@ -292,18 +293,25 @@ public:
 
     func = new RegName(_type, "@", instRexRes[2].str(), hasQuote);
 
-    string tmpArgs = instRexRes[3];
-    smatch argsRexRes;
-    while (regex_search(tmpArgs, argsRexRes, funcArgsRex)) {
-      smatch tmpRes;
-      string tmpRexStr = argsRexRes[0];
-      if (regex_search(tmpRexStr, tmpRes, funcArgsConstRex)) {
-        funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2], hasQuote);
-      } else if (regex_search(tmpRexStr, tmpRes, funcArgsRegRex)) {
-        funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3], hasQuote);
+    string                tmpArgs = instRexRes[3];
+    regex                 reg(", ");
+    sregex_token_iterator pos(tmpArgs.begin(), tmpArgs.end(), reg, -1);
+    decltype(pos)         end;
+    int                   count = 0;
+
+    for (; pos != end; ++pos) {
+      smatch argsRexRes;
+      string thisArg = pos->str();
+      if (regex_search(thisArg, argsRexRes, funcArgsRegRex)) {
+        funcArgs.emplace_back(argsRexRes[1].str(), argsRexRes[2].str(),
+                              argsRexRes[3].str(), hasQuote);
+      } else if (regex_search(thisArg, argsRexRes, funcArgsConstRex)) {
+        funcArgs.emplace_back(argsRexRes[1].str(), "constant",
+                              argsRexRes[2].str(), hasQuote);
+      } else if (regex_search(thisArg, argsRexRes, funcArgsNoVar)) {
+        funcArgs.emplace_back(argsRexRes[1].str(), "%", to_string(count++),
+                              hasQuote);
       }
-      int pos = tmpArgs.find(tmpRexStr);
-      tmpArgs.erase(pos, tmpRexStr.length());
     }
   }
 
@@ -319,6 +327,7 @@ private:
   regex funcArgsRex;
   regex funcArgsConstRex;
   regex funcArgsRegRex;
+  regex funcArgsNoVar;
 
   RegName*        func;
   vector<RegName> funcArgs;
@@ -335,7 +344,7 @@ public:
 
   void Init(const smatch& instRexRes) {
     bool hasQuote = false;
-    if(instRexRes[0].str().find("\"") != string::npos)
+    if (instRexRes[0].str().find("\"") != string::npos)
       hasQuote = true;
     source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3], hasQuote);
     dest   = new RegName(instRexRes[4], instRexRes[5], instRexRes[6], hasQuote);
@@ -371,10 +380,12 @@ class LoadInst {
 public:
   explicit LoadInst(const smatch& _instRexRes) {
     bool hasQuote = false;
-    if(_instRexRes[0].str().find("\"") != string::npos)
+    if (_instRexRes[0].str().find("\"") != string::npos)
       hasQuote = true;
-    source = new RegName(_instRexRes[4], _instRexRes[5], _instRexRes[6], hasQuote);
-    dest   = new RegName(_instRexRes[3], _instRexRes[1], _instRexRes[2], hasQuote);
+    source =
+        new RegName(_instRexRes[4], _instRexRes[5], _instRexRes[6], hasQuote);
+    dest =
+        new RegName(_instRexRes[3], _instRexRes[1], _instRexRes[2], hasQuote);
   }
 
   string GetString() {
@@ -714,8 +725,8 @@ public:
       for (int k = 0; k < 10000; k++)
         ;
 
-     if (runShell.joinable())
-       system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
+    if (runShell.joinable())
+      system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
     // system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
 
     ExtractInfo(_funcName, _folderName, _inst, _instIndex, _chainIndex);
