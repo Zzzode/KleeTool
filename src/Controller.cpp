@@ -11,7 +11,7 @@ bool Controller::ParseJson(const string& folderName) {
   string         thisPath = path + "/" + folderName;
   vector<string> jsonFiles;
   string jsonPath = path + "/" + folderName + "/" + folderName + ".json";
-  // 如果没有json文件
+  // if there is no json files
   if (!GetTargetFiles(thisPath, jsonFiles, ".json")) {
     cout << "No json file\n";
     return false;
@@ -28,20 +28,20 @@ bool Controller::ParseJson(const string& folderName) {
       break;
     }
   }
-  //从文件中读取，保证当前文件夹有.json文件
+  // read from json file
   ifstream inFile(jsonPath, ios::in);
 
-  // 以二进制形式读取json文件内容
+  // read json in binary data
   ostringstream buf;
   char          ch;
   while (buf && inFile.get(ch))
     buf.put(ch);
 
-  // 文件流指针重置
+  // file stream point refresh
   inFile.clear();
   inFile.seekg(0, ios::beg);
 
-  // 解析json及inst
+  // parse json
   document.Parse(buf.str().c_str());
   inFile.close();
 
@@ -79,9 +79,9 @@ void Controller::Entry() {
       string thisPath = path + "/" + folderName;
       cout << "This path is " << thisPath << endl;
 
-      // 只有没有跑完的数据会接下去执行
+      // only func not yet run have to go on
       if (access((thisPath + "/time.txt").c_str(), 0) == -1) {
-        // 开始计时
+        // start
         start_t = clock();
         // 存在json
         if (ParseJson(folderName))
@@ -163,12 +163,12 @@ void Controller::FunChains(const string& folderName) {
         assert(inst.IsObject());
         Instruction thisInst = thisFunc.GetInst(instNum);
         thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
-        // 打印当前指令
+        // output this instruction
         //        cout << thisInst.GetType() << ": " << thisInst.GetString() <<
         //        endl;
 
         // 当指令为算数操作时用klee_assume
-        // TODO 全局变量需要符号化
+        // TODO global variables need to be symbolic
         if (thisInst.GetType() == 1) {
           auto arithInst = static_cast<ArithOp*>(thisInst.GetInst());
 
@@ -190,17 +190,15 @@ void Controller::FunChains(const string& folderName) {
         } else if (thisInst.GetType() == 2) {
           auto callInst = static_cast<FuncCall*>(thisInst.GetInst());
 
-          // TODO 需要将调用的函数的参数符号化 暂不需要
-          //
-          // TODO 需要将函数本身的参数进行符号化 暂不需要
-          //
+          // TODO we need to make symbolize on call func args (next ver)
+          // TODO we need to make symbolize on this func args (next version)
 
           thisFunc.SetIsCall(true);
         } else if (thisInst.GetType() == 3) {
           auto storeInst = static_cast<StoreInst*>(thisInst.GetInst());
 
           // thisLLVMFile->AddGlobalSymbols(storeInst->GetDest());
-          // 将store的全局变量符号化
+          // symbolic `store global variables`
           thisLLVMFunc.WriteNewLines(
               modifyLlvm.ModifyStoreInst(storeInst, thisLLVMFunc));
           // cout << "debug: " << thisLLVMFile->symCount << endl;
@@ -210,7 +208,7 @@ void Controller::FunChains(const string& folderName) {
         instNum++;
       }
       cout << "debug: 2" << endl;
-      // 替换文件中当前函数
+      // replace this funclines in llvm ir file
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
       thisLLVMFile->ReturnLLFunc(funcName, thisLLVMFunc);
@@ -219,14 +217,14 @@ void Controller::FunChains(const string& folderName) {
       funcIndex++;
     }
     cout << "debug: 3" << endl;
-    // 找到调用链的初始函数
+    // find out start func in this call chain
     Function& startFunc = thisChain.ReturnChainStart();
-    // 添加全局sym和局部sym
+    // add global symbols and local symbols
     thisLLVMFile->AddLocalSymDecl(
         thisLLVMFile->InitFuncLines(startFunc.GetFuncName()));
     // thisLLVMFile->WriteGlobalSymDecl();
 
-    // 找到调用链的末端函数
+    // find out the end func in this call chain
     cout << "debug: 3.1" << endl;
     string             endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
@@ -235,32 +233,32 @@ void Controller::FunChains(const string& folderName) {
     LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
     thisLLVMFile->SetTmpLines();
     cout << "debug: 3.3" << endl;
-//    vector<string> newStr =
-//        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, assumes.front().GetInst());
+    //    vector<string> newStr =
+    //        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc,
+    //        assumes.front().GetInst());
 
     // thisLLVMFile->WriteGlobalSymDecl();
-    // ！每个算数指令运行一次Klee
+    // ! each instruction need to run KLEE once
     cout << "debug: 4" << endl;
     for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
       vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
                                     assumes.begin() + (3 * i + 3));
-      vector<string> newStr =
+      vector<string>     newStr =
           modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, tmpAssumes[0].GetInst());
       thisLLVMFunc.WriteNewLines(
           modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
       cout << "debug: 5" << endl;
-      // 插入全局变量的符号化声明
+      // inert global symbols' symbolic declaration
       thisLLVMFile->WriteGlobalSymDecl();
       cout << "debug: 6" << endl;
       thisLLVMFile->CreateFile("tmp.ll");
-      // 调用`klee --entry-point=thisFuncName`
+      // call `klee --entry-point=thisFuncName`
       RunKlee(startFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
               to_string(i), to_string(chainIndex));
 
-      // TODO 找到只初始化全局变量不参与调用链的函数 单独调用`klee
-      //
+      // TODO need to find out constructions and call KLEE
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
