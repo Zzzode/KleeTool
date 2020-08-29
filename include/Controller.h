@@ -25,26 +25,32 @@ using namespace std;
 
 class RegName {
 public:
-  RegName() : count(0) {}
+  RegName() : count(0), hasQuote(false) {}
 
-  RegName(string _type, string _attr, string _name, int _count) {
-    type  = std::move(_type);
-    attr  = std::move(_attr);
-    name  = std::move(_name);
-    count = _count;
+  RegName(string _type,
+          string _attr,
+          string _name,
+          int    _count,
+          bool   _hasQuote) {
+    type     = std::move(_type);
+    attr     = std::move(_attr);
+    name     = std::move(_name);
+    hasQuote = _hasQuote;
+    count    = _count;
   }
 
   /**
    * @sample i160, %, FunctionCall.1
    */
-  RegName(string _type, string _attr, string _inst) {
+  RegName(string _type, string _attr, string _inst, bool _hasQuote) {
     regRex = R"((\w+)\.(\d+))";
     smatch opRexRes;
 
-    type  = std::move(_type);
-    attr  = std::move(_attr);
-    name  = std::move(_inst);
-    count = 0;
+    type     = std::move(_type);
+    attr     = std::move(_attr);
+    name     = std::move(_inst);
+    hasQuote = _hasQuote;
+    count    = 0;
 
     if (regex_search(name, opRexRes, regRex)) {
       name  = opRexRes[1];
@@ -59,6 +65,8 @@ public:
     smatch regRexRes;
     regRex = R"((@|%)[\\"]*(\w+)\.(\d+)[\\"]*)";
     regex regRex1(R"((@|%)[\\"]*(\w+)[\\"]*)");
+    if (_str.find("\"") != string::npos)
+      hasQuote = true;
 
     type = std::move(_type);
     if (regex_search(_str, regRexRes, regRex)) {
@@ -82,16 +90,24 @@ public:
     if (attr.find("constant") != string::npos) {
       return name;
     }
-    string _res = attr + "\"" + name;
-    _res += count == 0 ? "" : "." + to_string(count);
-    _res += "\"";
-    return _res;
+    //    regex nameRex(R"(\d+)");
+    //    smatch nameRes;
+    //    if (regex_search(name, nameRes, nameRex))
+    //      return attr + name;
+    if (hasQuote) {
+      string _res = attr + "\"" + name;
+      _res += count == 0 ? "" : "." + to_string(count);
+      _res += "\"";
+      return _res;
+    } else
+      return attr + name;
   }
 
   string GetPureName() {
     if (attr.find("constant") != string::npos) {
       return name;
     }
+
     string _res = name;
     _res += count == 0 ? "" : "." + to_string(count);
     return _res;
@@ -125,7 +141,9 @@ private:
   string type;
   string name;
   string attr;
-  int    count;
+
+  int  count;
+  bool hasQuote;
 };
 
 class ArithOp {
@@ -144,20 +162,22 @@ public:
   }
 
   void Init(const smatch& instRexRes) {
-    op = instRexRes[3];
-
-    res = new RegName(instRexRes[4], instRexRes[1], instRexRes[2]);
+    op            = instRexRes[3];
+    bool hasQuote = false;
+    if (instRexRes[0].str().find("\"") != string::npos)
+      hasQuote = true;
+    res = new RegName(instRexRes[4], instRexRes[1], instRexRes[2], hasQuote);
 
     smatch leftRes, rightRes;
     string leftOp(instRexRes[5]), rightOp(instRexRes[6]);
     if (regex_search(leftOp, leftRes, varRex))
-      lReg = new RegName(instRexRes[4], leftRes[1], leftRes[2]);
+      lReg = new RegName(instRexRes[4], leftRes[1], leftRes[2], hasQuote);
     else if (regex_search(leftOp, leftRes, constantRex))
-      lReg = new RegName(instRexRes[4], "constant", leftRes[1]);
+      lReg = new RegName(instRexRes[4], "constant", leftRes[1], hasQuote);
     if (regex_search(rightOp, rightRes, varRex))
-      rReg = new RegName(instRexRes[4], rightRes[1], rightRes[2]);
+      rReg = new RegName(instRexRes[4], rightRes[1], rightRes[2], hasQuote);
     else if (regex_search(rightOp, rightRes, constantRex))
-      rReg = new RegName(instRexRes[4], "constant", rightRes[1]);
+      rReg = new RegName(instRexRes[4], "constant", rightRes[1], hasQuote);
   }
 
   string GetString() {
@@ -203,7 +223,10 @@ public:
 
   void Init(const smatch& instRexRes) {
     string _type = instRexRes[3].str();
-    callFunc     = new RegName(_type, "@", instRexRes[4].str());
+    bool hasQuote = false;
+    if(instRexRes[0].str().find("\"") != string::npos)
+      hasQuote = true;
+    callFunc     = new RegName(_type, "@", instRexRes[4].str(), hasQuote);
     callRes      = new RegName(_type, instRexRes[1].str());
 
     string tmpArgs = instRexRes[5];
@@ -212,9 +235,9 @@ public:
       smatch tmpRes;
       string tmpRexStr = argsRexRes[0];
       if (regex_search(tmpRexStr, tmpRes, funcArgsConstRex)) {
-        funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2]);
+        funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2], hasQuote);
       } else if (regex_search(tmpRexStr, tmpRes, funcArgsRegRex)) {
-        funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3]);
+        funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3], hasQuote);
       }
       int pos = tmpArgs.find(tmpRexStr);
       tmpArgs.erase(pos, tmpRexStr.length());
@@ -262,8 +285,12 @@ public:
   }
 
   void Init(const smatch& instRexRes) {
-    string _type = instRexRes[1].str();
-    func         = new RegName(_type, "@", instRexRes[2].str());
+    string _type    = instRexRes[1].str();
+    bool   hasQuote = false;
+    if (instRexRes[0].str().find("\"") != string::npos)
+      hasQuote = true;
+
+    func = new RegName(_type, "@", instRexRes[2].str(), hasQuote);
 
     string tmpArgs = instRexRes[3];
     smatch argsRexRes;
@@ -271,9 +298,9 @@ public:
       smatch tmpRes;
       string tmpRexStr = argsRexRes[0];
       if (regex_search(tmpRexStr, tmpRes, funcArgsConstRex)) {
-        funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2]);
+        funcArgs.emplace_back(tmpRes[1], "constant", tmpRes[2], hasQuote);
       } else if (regex_search(tmpRexStr, tmpRes, funcArgsRegRex)) {
-        funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3]);
+        funcArgs.emplace_back(tmpRes[1], tmpRes[2], tmpRes[3], hasQuote);
       }
       int pos = tmpArgs.find(tmpRexStr);
       tmpArgs.erase(pos, tmpRexStr.length());
@@ -307,8 +334,11 @@ public:
   }
 
   void Init(const smatch& instRexRes) {
-    source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3]);
-    dest   = new RegName(instRexRes[4], instRexRes[5], instRexRes[6]);
+    bool hasQuote = false;
+    if(instRexRes[0].str().find("\"") != string::npos)
+      hasQuote = true;
+    source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3], hasQuote);
+    dest   = new RegName(instRexRes[4], instRexRes[5], instRexRes[6], hasQuote);
   }
 
   void Init(const string& _inst) {
@@ -340,8 +370,11 @@ private:
 class LoadInst {
 public:
   explicit LoadInst(const smatch& _instRexRes) {
-    source = new RegName(_instRexRes[4], _instRexRes[5], _instRexRes[6]);
-    dest   = new RegName(_instRexRes[3], _instRexRes[1], _instRexRes[2]);
+    bool hasQuote = false;
+    if(_instRexRes[0].str().find("\"") != string::npos)
+      hasQuote = true;
+    source = new RegName(_instRexRes[4], _instRexRes[5], _instRexRes[6], hasQuote);
+    dest   = new RegName(_instRexRes[3], _instRexRes[1], _instRexRes[2], hasQuote);
   }
 
   string GetString() {
@@ -491,7 +524,7 @@ private:
   ArithOp*   arithOp{};
   FuncCall*  funcCall{};
   StoreInst* storeInst{};
-  LoadInst*  loadInst;
+  LoadInst*  loadInst{};
 
 private:
   regex arithInstRex;
@@ -680,9 +713,9 @@ public:
       for (int k = 0; k < 10000; k++)
         ;
 
-    // if (runShell.joinable())
-    //   system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
-    system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
+     if (runShell.joinable())
+       system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
+    // system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
 
     ExtractInfo(_funcName, _folderName, _inst, _instIndex, _chainIndex);
   }
@@ -716,8 +749,9 @@ public:
     }
   }
 
-  static bool
-  GetTargetFiles(const string& _path, vector<string>& _files, const string& _name) {
+  static bool GetTargetFiles(const string&   _path,
+                             vector<string>& _files,
+                             const string&   _name) {
     DIR*           dir;
     struct dirent* ptr;
 

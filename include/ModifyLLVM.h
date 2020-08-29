@@ -246,7 +246,7 @@ public:
     kleeAssumeDecl = "declare void @klee_assume(i64)";
 
     symCount = 0;
-    fileName = _name + ".ll";
+    fileName = _name;
     filePath = _path;
     llFile.open(_path + "/" + fileName, ios::in);
     // cout << "debug " << _path + "/" + fileName << endl;
@@ -506,7 +506,7 @@ public:
 
   vector<string> ModifyAssumes(LLVMFunction&      _llFunction,
                                vector<KleeAssume> _assumes,
-                               vector<string>     _newStr);
+                               const vector<string>&     _newStr);
 
   vector<string> AddArithGlobalSyms(LLVMFunction& _llFunction,
                                     const string& _inst);

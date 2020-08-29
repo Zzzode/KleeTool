@@ -122,7 +122,7 @@ void Controller::FunChains(const string& folderName) {
     }
   }
   // 初始化modify llvm相关
-  ModifyLLVM modifyLlvm(llFileName, path + "/" + llFileName, document.Size());
+  ModifyLLVM modifyLlvm(llFileName, path + "/" + folderName, document.Size());
   LLVMFile*  thisLLVMFile = modifyLlvm.GetLLVMFile();
   cout << "file name = " << thisLLVMFile->GetFileName() << endl;
 
@@ -164,7 +164,8 @@ void Controller::FunChains(const string& folderName) {
         Instruction thisInst = thisFunc.GetInst(instNum);
         thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
         // 打印当前指令
-        cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
+        //        cout << thisInst.GetType() << ": " << thisInst.GetString() <<
+        //        endl;
 
         // 当指令为算数操作时用klee_assume
         // TODO 全局变量需要符号化
@@ -234,8 +235,8 @@ void Controller::FunChains(const string& folderName) {
     LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
     thisLLVMFile->SetTmpLines();
     cout << "debug: 3.3" << endl;
-    vector<string> newStr =
-        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, assumes.front().GetInst());
+//    vector<string> newStr =
+//        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, assumes.front().GetInst());
 
     // thisLLVMFile->WriteGlobalSymDecl();
     // ！每个算数指令运行一次Klee
@@ -243,13 +244,16 @@ void Controller::FunChains(const string& folderName) {
     for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
       vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
                                     assumes.begin() + (3 * i + 3));
+      vector<string> newStr =
+          modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, tmpAssumes[0].GetInst());
       thisLLVMFunc.WriteNewLines(
           modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
+      cout << "debug: 5" << endl;
       // 插入全局变量的符号化声明
       thisLLVMFile->WriteGlobalSymDecl();
-
+      cout << "debug: 6" << endl;
       thisLLVMFile->CreateFile("tmp.ll");
       // 调用`klee --entry-point=thisFuncName`
       RunKlee(startFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
@@ -260,6 +264,8 @@ void Controller::FunChains(const string& folderName) {
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
+      cout << "debug: 7" << endl;
+      // exit(0);
     }
     // exit(0);
     thisLLVMFile->Refresh();

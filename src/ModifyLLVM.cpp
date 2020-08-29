@@ -14,14 +14,14 @@
 
 vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
                                               const string& _inst) {
-  cout << "debug: 3.3.0" << endl;
+  cout << "debug: 4.0" << endl;
   vector<string> funcLines(_llFunction.GetNewLines());
   vector<string> _res;
-  cout << "debug: 3.3.1" << endl;
+  cout << "debug: 4.1" << endl;
   for (int i = 0; i < funcLines.size(); ++i) {
     string funcLine = funcLines[i];
     if (funcLine.find(_inst) != string::npos) {
-      cout << "debug: 3.3.2" << endl;
+      cout << "debug: 4.2" << endl;
       // 遍历前两行寻找load的全局变量
       Instruction leftLoadInst, rightLoadInst;
       // 右操作数
@@ -79,9 +79,9 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
   return _res;
 }
 
-vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&      _llFunction,
-                                         vector<KleeAssume> _assumes,
-                                         vector<string>     _newStr) {
+vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&         _llFunction,
+                                         vector<KleeAssume>    _assumes,
+                                         const vector<string>& _newStr) {
   vector<string> funcLines = _llFunction.GetNewLines();
   string         inst      = _assumes[0].GetInst();
   for (int i = 0; i < funcLines.size(); ++i) {
