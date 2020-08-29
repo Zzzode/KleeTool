@@ -87,8 +87,11 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
           }
         }
         if (rightSource != nullptr) {
-          if (rightSource->GetAttr() == "@" &&
-              rightSource->GetPureName() != leftSource->GetPureName()) {
+          if (rightSource->GetAttr() == "@") {
+            // 如果left source存在
+            if (leftSource != nullptr)
+              if(rightSource->GetPureName() == leftSource->GetPureName())
+                break;
             // llvmFile->AddGlobalSymbols(rightSource);
             int num = llvmFile->AddGlobalSymDecl(rightSource);
 
