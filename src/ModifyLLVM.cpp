@@ -48,6 +48,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
 
             auto lInst = static_cast<LoadInst*>(lLoadInst.GetInst());
             leftSource = lInst->GetSource();
+            break;
           }
         }
         if (leftSource != nullptr) {
@@ -84,6 +85,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
 
             auto rInst  = static_cast<LoadInst*>(rLoadInst.GetInst());
             rightSource = rInst->GetSource();
+            break;
           }
         }
         if (rightSource != nullptr) {

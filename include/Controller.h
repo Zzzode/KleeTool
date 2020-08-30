@@ -712,11 +712,11 @@ public:
 
     // 创建并执行指令
     string command("klee \\\n"
-                   "  -link-llvm-lib=~/Dataset/Eos_Solidity_Dataset/eosLibs/wasm-rt-impl.bc \\\n"
-                   "  -link-llvm-lib=~/Dataset/Eos_Solidity_Dataset/eosLibs/intrinsics.bc \\\n"
-                   "  -link-llvm-lib=~/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_c.a \\\n"
-                   "  -link-llvm-lib=~/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_eosio.a \\\n"
-                   "  -link-llvm-lib=~/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_rt.a \\\n"
+                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/wasm-rt-impl.bc \\\n"
+                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/intrinsics.bc \\\n"
+                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_c.a \\\n"
+                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_eosio.a \\\n"
+                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_rt.a \\\n"
                    " --entry-point=" + _funcName +
                    " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     cout << endl;
