@@ -427,6 +427,7 @@ public:
         if (fileLines[i].find(_tmp.second->GetName() + " = ") != string::npos) {
           fileLines.insert(fileLines.begin() + i + 1, _tmp.first);
           lineNum = i + 1;
+          break;
         }
       }
     }

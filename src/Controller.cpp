@@ -114,6 +114,9 @@ void Controller::FunChains(const string& folderName) {
     cout << "No ll file\n";
     return;
   }
+  auto it = find(llFiles.begin(), llFiles.end(), "tmp.ll");
+  if (it != llFiles.end())
+    llFiles.erase(find(llFiles.begin(), llFiles.end(), "tmp.ll"));
   for (int i = 0; i < llFiles.size(); i++) {
     if (llFiles[i].find("_wasm.ll") != string::npos ||
         i == llFiles.size() - 1) {
@@ -265,7 +268,7 @@ void Controller::FunChains(const string& folderName) {
       cout << "debug: 7" << endl;
       // exit(0);
     }
-    // exit(0);
+//    exit(0);
     thisLLVMFile->Refresh();
     chainIndex++;
   }
