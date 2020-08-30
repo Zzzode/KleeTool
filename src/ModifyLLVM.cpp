@@ -33,7 +33,8 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
       RegName*    leftSource  = nullptr;
       // 判断左右操作数是否存在
       if (thisArithInst->GetReg(2)->GetAttr() != "constant") {
-        for (int j = 1; j <= 4; j++) {
+        int j = 1;
+        while (i - j >= 0) {
           if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName()) !=
               string::npos) {
             if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName() +
@@ -50,6 +51,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
             leftSource = lInst->GetSource();
             break;
           }
+          j++;
         }
         if (leftSource != nullptr) {
           if (leftSource->GetAttr() == "@") {
@@ -70,7 +72,8 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         }
       }
       if (thisArithInst->GetReg(3)->GetAttr() != "constant") {
-        for (int j = 1; j <= 4; j++) {
+        int j = 1;
+        while (i - j >= 0) {
           if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName()) !=
               string::npos) {
             if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName() +
@@ -87,12 +90,13 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
             rightSource = rInst->GetSource();
             break;
           }
+          j++;
         }
         if (rightSource != nullptr) {
           if (rightSource->GetAttr() == "@") {
             // 如果left source存在
             if (leftSource != nullptr)
-              if(rightSource->GetPureName() == leftSource->GetPureName())
+              if (rightSource->GetPureName() == leftSource->GetPureName())
                 break;
             // llvmFile->AddGlobalSymbols(rightSource);
             int num = llvmFile->AddGlobalSymDecl(rightSource);

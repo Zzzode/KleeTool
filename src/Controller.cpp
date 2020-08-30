@@ -173,7 +173,8 @@ void Controller::FunChains(const string& folderName) {
         // 当指令为算数操作时用klee_assume
         // TODO global variables need to be symbolic
         if (thisInst.GetType() == 1) {
-          auto arithInst = static_cast<ArithOp*>(thisInst.GetInst());
+          auto   arithInst = static_cast<ArithOp*>(thisInst.GetInst());
+          string instStr   = (inst.MemberBegin() + 1)->value.GetString();
 
           int opType =
               arithInst->GetOp() == "add" || arithInst->GetOp() == "mul" ? 1 :
@@ -266,9 +267,9 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
       cout << "debug: 7" << endl;
-      // exit(0);
+      exit(0);
     }
-//    exit(0);
+    //    exit(0);
     thisLLVMFile->Refresh();
     chainIndex++;
   }

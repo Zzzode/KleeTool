@@ -431,7 +431,7 @@ public:
         }
       }
     }
-    if (lineNum == 2){
+    if (lineNum == 2) {
       while (!fileLines[lineNum].empty())
         lineNum++;
     }
@@ -509,9 +509,9 @@ public:
 
   vector<string> ModifyStoreInst(StoreInst* _inst, LLVMFunction& _llFunction);
 
-  vector<string> ModifyAssumes(LLVMFunction&      _llFunction,
-                               vector<KleeAssume> _assumes,
-                               const vector<string>&     _newStr);
+  vector<string> ModifyAssumes(LLVMFunction&         _llFunction,
+                               vector<KleeAssume>    _assumes,
+                               const vector<string>& _newStr);
 
   vector<string> AddArithGlobalSyms(LLVMFunction& _llFunction,
                                     const string& _inst);

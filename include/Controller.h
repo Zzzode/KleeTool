@@ -148,7 +148,7 @@ private:
 
 class ArithOp {
 public:
-  ArithOp() {
+  ArithOp() : nuw(false), nsw(false) {
     res  = new RegName;
     lReg = new RegName;
     rReg = new RegName;
@@ -157,11 +157,9 @@ public:
     constantRex = R"(([\-\w]*))";
   }
 
-  ArithOp(ArithOp* inst) {
-    ;
-  }
-
-  void Init(const smatch& instRexRes) {
+  void Init(const smatch& instRexRes, bool _nuw, bool _nsw) {
+    nuw           = _nuw;
+    nsw           = _nsw;
     op            = instRexRes[3].str();
     bool hasQuote = false;
     if (instRexRes[0].str().find("\"") != string::npos)
@@ -181,8 +179,13 @@ public:
   }
 
   string GetString() {
-    string _res = res->GetName() + " = " + op + " " + res->GetType() + " " +
-                  lReg->GetName() + ", " + rReg->GetName();
+    string _res = res->GetName() + " = " + op;
+    if (nuw)
+      _res += " nuw";
+    if (nsw)
+      _res += " nsw";
+    _res +=
+        " " + res->GetType() + " " + lReg->GetName() + ", " + rReg->GetName();
     return _res;
   }
 
@@ -201,6 +204,9 @@ public:
   }
 
 private:
+  bool nuw;
+  bool nsw;
+
   regex varRex;
   regex constantRex;
 
@@ -440,8 +446,10 @@ public:
     funcCall  = new FuncCall;
     storeInst = new StoreInst;
 
-    arithInstRex = R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = (\w+) (\w+) (.*), (.*))";
-    funcCallRex  = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
+    // "%83 = add nuw nsw i64 %75, 1"
+    arithInstRex =
+        R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = (\w+)[ nuw]*[ nsw]* (\w+) (.*), (.*))";
+    funcCallRex = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
     storeRex =
         R"(store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     loadRex =
@@ -449,8 +457,9 @@ public:
   }
 
   explicit Instruction(const string& _inst) {
-    arithInstRex = R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = (\w+) (\w+) (.*), (.*))";
-    funcCallRex  = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
+    arithInstRex =
+        R"((%|@)[\\"]*([\-\w\.]*)[\\"]* = (\w+)[ nuw]*[ nsw]* (\w+) (.*), (.*))";
+    funcCallRex = R"((.*) = (call) (.*) @\"(.*)\"\((.*)\))";
     storeRex =
         R"(store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     loadRex =
@@ -458,7 +467,12 @@ public:
     smatch instRexRes;
     if (regex_search(_inst, instRexRes, arithInstRex)) {
       // string op = instRexRes[3];
-      arithOp->Init(instRexRes);
+      bool nuw = false, nsw = false;
+      if (_inst.find("nuw") != string::npos)
+        nuw = true;
+      if (_inst.find("nsw") != string::npos)
+        nsw = true;
+      arithOp->Init(instRexRes, nuw, nsw);
       instType = 1;
     } else if (regex_search(_inst, instRexRes, funcCallRex)) {
       funcCall->Init(instRexRes);
@@ -475,7 +489,12 @@ public:
   void InitInst(const string& _inst) {
     smatch instRexRes;
     if (regex_search(_inst, instRexRes, arithInstRex)) {
-      arithOp->Init(instRexRes);
+      bool nuw = false, nsw = false;
+      if (_inst.find("nuw") != string::npos)
+        nuw = true;
+      if (_inst.find("nsw") != string::npos)
+        nsw = true;
+      arithOp->Init(instRexRes, nuw, nsw);
       instType = 1;
     } else if (regex_search(_inst, instRexRes, funcCallRex)) {
       funcCall->Init(instRexRes);
@@ -711,18 +730,30 @@ public:
       mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     // 创建并执行指令
-//    string command("klee \\\n"
-//                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/wasm-rt-impl.bc \\\n"
-//                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/intrinsics.bc \\\n"
-//                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_c.a \\\n"
-//                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_eosio.a \\\n"
-//                   "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/eosLibs/libnative_rt.a \\\n"
-//                   " --entry-point=" + _funcName +
-//                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
-    string command("klee  --entry-point=" + _funcName +
-                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
+    string command("klee \\\n"
+                   "  "
+                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+                   "eosLibs/wasm-rt-impl.bc \\\n"
+                   "  "
+                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+                   "eosLibs/intrinsics.bc \\\n"
+                   "  "
+                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+                   "eosLibs/libnative_c.a \\\n"
+                   "  "
+                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+                   "eosLibs/libnative_eosio.a \\\n"
+                   "  "
+                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+                   "eosLibs/libnative_rt.a \\\n"
+                   " --entry-point=" +
+                   _funcName + " --output-dir=" + _outPath + " " + _path +
+                   "/tmp.ll");
+    //    string command("klee  --entry-point=" + _funcName +
+    //                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     cout << endl;
     cout << command << endl;
+    //    system(command.c_str());
     thread runShell([&] { system(command.c_str()); });
     runShell.detach();
     // system(command.c_str());
@@ -749,7 +780,7 @@ public:
     string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
     string _outPath(_outFolder + "/inst" + _instIndex);
 
-    if(access((_outPath + "/assembly.ll").c_str(), 0) != -1)
+    if (access((_outPath + "/assembly.ll").c_str(), 0) != -1)
       system(("rm " + _outPath + "/assembly.ll").c_str());
 
     ofstream out;
