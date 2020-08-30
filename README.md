@@ -40,4 +40,6 @@ KleeTool/build/$ make
 
 ## Others
 
-当前工具对EOS平台wasm反编译出来的ll文件有bug，可能无法生成可用的ll文件，bug修复中。
+~~当前工具对EOS平台wasm反编译出来的ll文件有bug，可能无法生成可用的ll文件，bug修复中。~~
+
+bug已修复
