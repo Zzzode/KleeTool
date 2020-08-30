@@ -747,6 +747,9 @@ public:
     string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
     string _outPath(_outFolder + "/inst" + _instIndex);
 
+    if(access((_outPath + "/assembly.ll").c_str(), 0) != -1)
+      system(("rm " + _outPath + "/assembly.ll").c_str());
+
     ofstream out;
     ifstream in;
     // 输出指令
