@@ -37,12 +37,10 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         while (i - j >= 0) {
           if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName()) !=
               string::npos) {
-            if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName() +
-                                      " = load") != string::npos)
+            string tmpStr(thisArithInst->GetReg(2)->GetName() + " = load");
+            if (funcLines[i - j].find(tmpStr) != string::npos)
               lLoadInst.InitInst(funcLines[i - j]);
-            else if (funcLines[i - j - 1].find(
-                         thisArithInst->GetReg(2)->GetName() + " = load") !=
-                     string::npos)
+            else if (funcLines[i - j - 1].find(tmpStr) != string::npos)
               lLoadInst.InitInst(funcLines[i - j - 1]);
             else
               break;
