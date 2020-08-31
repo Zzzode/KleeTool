@@ -62,7 +62,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
                       ", i8* getelementptr inbounds ([";
             unsigned int _size = leftSource->GetPureName().size() + 1;
             newStr += to_string(_size) + " x i8], [" + to_string(_size) +
-                      " x i8]* @.str";
+                      " x i8]* @klee_str";
             newStr += num == 0 ? "" : "." + to_string(num);
             newStr += ", i64 0, i64 0))";
             _res.push_back(newStr);
@@ -105,7 +105,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
                       ", i8* getelementptr inbounds ([";
             unsigned int _size = rightSource->GetPureName().size() + 1;
             newStr += to_string(_size) + " x i8], [" + to_string(_size) +
-                      " x i8]* @.str";
+                      " x i8]* @klee_str";
             newStr += num == 0 ? "" : "." + to_string(num);
             newStr += ", i64 0, i64 0))";
             _res.push_back(newStr);
@@ -178,7 +178,7 @@ vector<string> ModifyLLVM::ModifyStoreInst(StoreInst*    _inst,
                 ", i8* getelementptr inbounds ([";
       unsigned int _size = _inst->GetDest()->GetPureName().size() + 1;
       newStr +=
-          to_string(_size) + " x i8], [" + to_string(_size) + " x i8]* @.str";
+          to_string(_size) + " x i8], [" + to_string(_size) + " x i8]* @klee_str";
       newStr += num == 0 ? "" : "." + to_string(num);
       newStr += ", i64 0, i64 0))";
 

@@ -300,7 +300,7 @@ public:
         i++;
       }
     }
-    cout << tmpStr << endl;
+//    cout << tmpStr << endl;
     funcRex = tmpStr;
 
     //        cout << "!!!" << _funcName << endl;
@@ -355,7 +355,7 @@ public:
 
   int AddGlobalSymDecl(RegName* _reg) {
     if (globalSyms.find(_reg->GetPureName()) == localSyms.end()) {
-      string _res = "@.str";
+      string _res = "@klee_str";
       _res += symCount == 0 ? "" : "." + to_string(symCount);
       _res += " = private unnamed_addr constant [";
       _res += to_string(_reg->GetPureName().size() + 1);
@@ -371,7 +371,7 @@ public:
 
   int AddLocalSymDecl(RegName* _reg) {
     if (localSyms.find(_reg->GetPureName()) == localSyms.end()) {
-      string _res = "@.str";
+      string _res = "@klee_str";
       _res += symCount == 0 ? "" : "." + to_string(symCount);
       _res += " = private unnamed_addr constant [";
       _res += to_string(_reg->GetPureName().size() + 1);
@@ -415,7 +415,7 @@ public:
           tmpLine += ", i8* getelementptr inbounds ([";
           tmpLine += to_string(_dest->GetPureName().size() + 1) + " x i8], [" +
                      to_string(_dest->GetPureName().size() + 1) +
-                     " x i8]* @.str";
+                     " x i8]* @klee_str";
           tmpLine += num == 0 ? "" : "." + to_string(num);
           tmpLine += ", i64 0, i64 0))";
           tmpLines.push_back(tmpLine);

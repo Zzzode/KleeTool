@@ -745,15 +745,16 @@ public:
                    "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
                    "eosLibs/intrinsics.bc \\\n"
                    "  "
-                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-                   "eosLibs/libnative_c.a \\\n"
-                   "  "
-                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-                   "eosLibs/libnative_eosio.a \\\n"
-                   "  "
-                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-                   "eosLibs/libnative_rt.a \\\n"
-                   " --entry-point=" +
+//                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+//                   "eosLibs/libnative_c.a \\\n"
+//                   "  "
+//                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+//                   "eosLibs/libnative_eosio.a \\\n"
+//                   "  "
+//                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+//                   "eosLibs/libnative_rt.a \\\n"
+//                   "  "
+                   "--entry-point=" +
                    _funcName + " --output-dir=" + _outPath + " " + _path +
                    "/tmp.ll");
     //    string command("klee  --entry-point=" + _funcName +
