@@ -713,7 +713,7 @@ public:
 
   void FunChains(const string& folderName);
 
-  void RunKlee(const string& _funcName,
+  void RunKlee(string        _funcName,
                const string& _folderName,
                const string& _inst,
                const string& _instIndex,
@@ -729,6 +729,13 @@ public:
     } else
       mkdir(_outFolder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
+    for (int i = 0; i < _funcName.length(); i++) {
+      if (_funcName[i] == '$') {
+        _funcName[i] = '\\';
+        _funcName.insert(_funcName.begin() + i + 1, '$');
+        i++;
+      }
+    }
     // 创建并执行指令
     string command("klee \\\n"
                    "  "

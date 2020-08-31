@@ -292,7 +292,16 @@ public:
     bool   inThisFunc = false;
     regex  funcRex;
     smatch funcRexRes;
-    funcRex = "define .* @" + _funcName + R"(\(.*\))";
+    string tmpStr("define .* @" + _funcName + R"(\(.*\))");
+    for (int i = 0; i < tmpStr.length(); i++){
+      if (tmpStr[i] == '$') {
+        tmpStr[i] = '\\';
+        tmpStr.insert(tmpStr.begin() + i + 1, '$');
+        i++;
+      }
+    }
+    cout << tmpStr << endl;
+    funcRex = tmpStr;
 
     //        cout << "!!!" << _funcName << endl;
 
