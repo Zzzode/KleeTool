@@ -318,7 +318,7 @@ public:
       } else {
         if (regex_search(fileLine, funcRexRes, funcRex)) {
           startLine = i;
-          //                    cout << "!!!" << endl;
+          //  cout << "!!!" << endl;
           funcLines.push_back(fileLine);
           inThisFunc = true;
         }

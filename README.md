@@ -16,7 +16,7 @@ KleeTool/build/$ make -j4
 2. ue shell script
 ```shell script
 KleeTool/$ sudo chmod u+x build.sh
-KleeTool/$ ./build
+KleeTool/$ ./build.sh
 ```
 
 即可完成源码编译，二进制可执行文件存在`KleeTool/bin/`路径中

@@ -114,8 +114,8 @@ void Controller::FunChains(const string& folderName) {
     cout << "No ll file\n";
     return;
   }
-  auto it = find(llFiles.begin(), llFiles.end(), "tmp.ll");
-  if (it != llFiles.end())
+
+  if (find(llFiles.begin(), llFiles.end(), "tmp.ll") != llFiles.end())
     llFiles.erase(find(llFiles.begin(), llFiles.end(), "tmp.ll"));
   for (int i = 0; i < llFiles.size(); i++) {
     if (llFiles[i].find("_wasm.ll") != string::npos ||
@@ -259,15 +259,17 @@ void Controller::FunChains(const string& folderName) {
       cout << "debug: 6" << endl;
       thisLLVMFile->CreateFile("tmp.ll");
       // call `klee --entry-point=thisFuncName`
-      RunKlee(startFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
-              to_string(i), to_string(chainIndex));
+      if (thisLLVMFile->symCount > 0)
+        RunKlee(startFunc.GetFuncName(), folderName,
+                tmpAssumes.front().GetInst(), to_string(i),
+                to_string(chainIndex));
 
       // TODO need to find out constructions and call KLEE
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
       cout << "debug: 7" << endl;
-//      exit(0);
+      //      exit(0);
     }
     //    exit(0);
     thisLLVMFile->Refresh();

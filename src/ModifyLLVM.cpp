@@ -38,13 +38,18 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
           if (funcLines[i - j].find(thisArithInst->GetReg(2)->GetName()) !=
               string::npos) {
             string tmpStr(thisArithInst->GetReg(2)->GetName() + " = load");
-            if (funcLines[i - j].find(tmpStr) != string::npos)
-              lLoadInst.InitInst(funcLines[i - j]);
-            else if (funcLines[i - j - 1].find(tmpStr) != string::npos)
-              lLoadInst.InitInst(funcLines[i - j - 1]);
-            else
+            string loadStr;
+            if (funcLines[i - j].find(tmpStr) != string::npos) {
+              loadStr = funcLines[i - j];
+            } else if (funcLines[i - j - 1].find(tmpStr) != string::npos) {
+              loadStr = funcLines[i - j - 1];
+            } else
               break;
-
+            // 如果从全局结构体中初始化
+            if (loadStr.find("getelementptr") != string::npos) {
+              break;
+            }
+            lLoadInst.InitInst(loadStr);
             auto lInst = static_cast<LoadInst*>(lLoadInst.GetInst());
             leftSource = lInst->GetSource();
             break;
@@ -74,16 +79,19 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         while (i - j >= 0) {
           if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName()) !=
               string::npos) {
-            if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName() +
-                                      " = load") != string::npos)
-              rLoadInst.InitInst(funcLines[i - j]);
-            else if (funcLines[i - j - 1].find(
-                         thisArithInst->GetReg(3)->GetName() + " = load") !=
-                     string::npos)
-              rLoadInst.InitInst(funcLines[i - j - 1]);
-            else
+            string tmpStr(thisArithInst->GetReg(2)->GetName() + " = load");
+            string loadStr;
+            if (funcLines[i - j].find(tmpStr) != string::npos) {
+              loadStr = funcLines[i - j];
+            } else if (funcLines[i - j - 1].find(tmpStr) != string::npos) {
+              loadStr = funcLines[i - j - 1];
+            } else
               break;
-
+            // 如果从全局结构体中初始化
+            if (loadStr.find("getelementptr") != string::npos) {
+              break;
+            }
+            rLoadInst.InitInst(loadStr);
             auto rInst  = static_cast<LoadInst*>(rLoadInst.GetInst());
             rightSource = rInst->GetSource();
             break;
@@ -177,8 +185,8 @@ vector<string> ModifyLLVM::ModifyStoreInst(StoreInst*    _inst,
       newStr += to_string(_inst->GetDest()->GetSize() / 8) +
                 ", i8* getelementptr inbounds ([";
       unsigned int _size = _inst->GetDest()->GetPureName().size() + 1;
-      newStr +=
-          to_string(_size) + " x i8], [" + to_string(_size) + " x i8]* @klee_str";
+      newStr += to_string(_size) + " x i8], [" + to_string(_size) +
+                " x i8]* @klee_str";
       newStr += num == 0 ? "" : "." + to_string(num);
       newStr += ", i64 0, i64 0))";
 
