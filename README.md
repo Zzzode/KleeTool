@@ -4,13 +4,19 @@
 
 ## Build
 
-在项目根目录创建`build`文件夹
+1. 在项目根目录创建`build`文件夹
 
 ```shell
 KleeTool/$ mkdir build
 KleeTool/$ cd build
 KleeTool/build/$ cmake ..
-KleeTool/build/$ make
+KleeTool/build/$ make -j4
+```
+
+2. ue shell script
+```shell script
+KleeTool/$ sudo chmod u+x build.sh
+KleeTool/$ ./build
 ```
 
 即可完成源码编译，二进制可执行文件存在`KleeTool/bin/`路径中
