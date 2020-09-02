@@ -249,27 +249,37 @@ void Controller::FunChains(const string& folderName) {
                                     assumes.begin() + (3 * i + 3));
       vector<string>     newStr =
           modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, tmpAssumes[0].GetInst());
-      thisLLVMFunc.WriteNewLines(
-          modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
-      thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
-                            thisLLVMFunc.GetNewLines());
-      cout << "debug: 5" << endl;
-      // inert global symbols' symbolic declaration
-      thisLLVMFile->WriteGlobalSymDecl();
-      cout << "debug: 6" << endl;
-      thisLLVMFile->CreateFile("tmp.ll");
-      // call `klee --entry-point=thisFuncName`
-      if (thisLLVMFile->symCount > 0)
-        RunKlee(startFunc.GetFuncName(), folderName,
-                tmpAssumes.front().GetInst(), to_string(i),
-                to_string(chainIndex));
 
+      bool isWasnRtStack = false;
+
+      if (!newStr.empty())
+        if (newStr.front() == "@wasm_rt_call_stack_depth") {
+          isWasnRtStack = true;
+          cout << "skip @wasm_rt_call_stack_depth!" << endl;
+        }
+
+      if (!isWasnRtStack) {
+        thisLLVMFunc.WriteNewLines(
+            modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
+        thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
+                              thisLLVMFunc.GetNewLines());
+        cout << "debug: 5" << endl;
+        // inert global symbols' symbolic declaration
+        thisLLVMFile->WriteGlobalSymDecl();
+        cout << "debug: 6" << endl;
+        thisLLVMFile->CreateFile("tmp.ll");
+        // call `klee --entry-point=thisFuncName`
+        if (thisLLVMFile->symCount > 0)
+          RunKlee(startFunc.GetFuncName(), folderName,
+                  tmpAssumes.front().GetInst(), to_string(i),
+                  to_string(chainIndex));
+      }
       // TODO need to find out constructions and call KLEE
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
       cout << "debug: 7" << endl;
-       exit(0);
+      // exit(0);
     }
     //    exit(0);
     thisLLVMFile->Refresh();

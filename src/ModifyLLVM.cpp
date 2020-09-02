@@ -58,6 +58,11 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         }
         if (leftSource != nullptr) {
           if (leftSource->GetAttr() == "@") {
+            if (leftSource->GetName() == "@wasm_rt_call_stack_depth"){
+              _res.clear();
+              _res.emplace_back("@wasm_rt_call_stack_depth");
+              return _res;
+            }
             // llvmFile->AddGlobalSymbols(leftSource);
             int num = llvmFile->AddGlobalSymDecl(leftSource);
 
@@ -79,7 +84,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         while (i - j >= 0) {
           if (funcLines[i - j].find(thisArithInst->GetReg(3)->GetName()) !=
               string::npos) {
-            string tmpStr(thisArithInst->GetReg(2)->GetName() + " = load");
+            string tmpStr(thisArithInst->GetReg(3)->GetName() + " = load");
             string loadStr;
             if (funcLines[i - j].find(tmpStr) != string::npos) {
               loadStr = funcLines[i - j];
@@ -104,6 +109,11 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
             if (leftSource != nullptr)
               if (rightSource->GetPureName() == leftSource->GetPureName())
                 break;
+            if (rightSource->GetName() == "@wasm_rt_call_stack_depth"){
+              _res.clear();
+              _res.emplace_back("@wasm_rt_call_stack_depth");
+              return _res;
+            }
             // llvmFile->AddGlobalSymbols(rightSource);
             int num = llvmFile->AddGlobalSymDecl(rightSource);
 
