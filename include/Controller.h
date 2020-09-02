@@ -7,6 +7,7 @@
 #include <chrono>
 //#include <csignal>
 #include <cstring>
+#include <algorithm>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
@@ -124,11 +125,17 @@ public:
     return type;
   }
 
-  string GetThisName();
+  string GetThisName() {
+    return name;
+  }
+
+  bool GetHasQuote() {
+    return hasQuote;
+  }
 
   int GetSize() {
     int    size = 0;
-    regex  sizeRex(R"(i(\w+).*)");
+    regex  sizeRex(R"(i(\d+)[\*]*)");
     smatch res;
     if (regex_search(type, res, sizeRex)) {
       size = stoi(res[1].str());
@@ -284,11 +291,14 @@ private:
 class FuncDefine {
 public:
   FuncDefine() {
-    func             = new RegName;
-    funcArgsRex      = R"((\w+) [%@\\"]*(\w*[\.\d]*)[\\"]*[, ]*)";
+    func = new RegName;
+    funcArgsRex =
+        R"(([%\"]*.*[%\"]*[\*]*)[ nocapture]*[ readonly]*[ dereferenceable\(\d+\)]*[ byval]*[ align \d]*[ noalias]*[ sret]* [%@\\"]*(\w*[\.\d]*)[\\"]*[, ]*)";
     funcArgsConstRex = R"((\w+) (\w+))";
-    funcArgsRegRex   = R"((\w+) (@|%)[\\"](.*)[\\"])";
-    funcArgsNoVar    = R"((\w+))";
+    funcArgsRegRex =
+        R"(([%\"]*.*[%\"]*[\*]*)[ nocapture]*[ readonly]*[ dereferenceable\(\d+\)]*[ byval]*[ align \d]*[ noalias]*[ sret]* (@|%)[\\"](.*)[\\"])";
+    funcArgsNoVar =
+        R"(([%\"]*.*[%\"]*[\*]*)[ nocapture]*[ readonly]*[ dereferenceable\(\d+\)]*[ byval]*[ align \d]*[ noalias]*[ sret]*)";
   }
 
   void Init(const smatch& instRexRes) {
@@ -300,23 +310,47 @@ public:
     func = new RegName(_type, "@", instRexRes[2].str(), hasQuote);
 
     string                tmpArgs = instRexRes[3];
+    vector<string>        argTypes;
     regex                 reg(", ");
     sregex_token_iterator pos(tmpArgs.begin(), tmpArgs.end(), reg, -1);
     decltype(pos)         end;
-    int                   count = 0;
+    int                   count    = 0;
+    auto                  tmpPos   = pos;
+    bool                  isStruct = false;
+    string                structArg;
+    for (; tmpPos != end; ++tmpPos) {
+      string posStr = tmpPos->str();
+      if (isStruct) {
+        if (posStr.find("\"") != string::npos) {
+          isStruct = false;
+          structArg += posStr;
+          argTypes.push_back(structArg);
+        }
+        structArg += ", " + posStr;
+      } else {
+        if (std::count(posStr.begin(), posStr.end(), '\"') == 2)
+          argTypes.push_back(posStr);
+        else if (std::count(posStr.begin(), posStr.end(), '\"') == 1) {
+          isStruct = true;
+          structArg  = posStr;
+          if (tmpPos == end)
+            argTypes.push_back(structArg);
+        } else
+          argTypes.push_back(posStr);
+      }
+    }
 
-    for (; pos != end; ++pos) {
+    for (const auto& thisArg : argTypes) {
       smatch argsRexRes;
-      string thisArg = pos->str();
-      if (regex_search(thisArg, argsRexRes, funcArgsRegRex)) {
+      if (regex_match(thisArg, argsRexRes, funcArgsRegRex)) {
         funcArgs.emplace_back(argsRexRes[1].str(), argsRexRes[2].str(),
                               argsRexRes[3].str(), hasQuote);
-      } else if (regex_search(thisArg, argsRexRes, funcArgsConstRex)) {
+      } else if (regex_match(thisArg, argsRexRes, funcArgsConstRex)) {
         funcArgs.emplace_back(argsRexRes[1].str(), "constant",
                               argsRexRes[2].str(), hasQuote);
-      } else if (regex_search(thisArg, argsRexRes, funcArgsNoVar)) {
+      } else if (regex_match(thisArg, argsRexRes, funcArgsNoVar)) {
         funcArgs.emplace_back(argsRexRes[1].str(), "%", to_string(count++),
-                              hasQuote);
+                              false);
       }
     }
   }
@@ -737,26 +771,26 @@ public:
       }
     }
     // 创建并执行指令
-    string command("klee \\\n"
-                   "  "
-                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-                   "eosLibs/wasm-rt-impl.bc \\\n"
-                   "  "
-                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-                   "eosLibs/intrinsics.bc \\\n"
-                   "  "
-//                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-//                   "eosLibs/libnative_c.a \\\n"
-//                   "  "
-//                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-//                   "eosLibs/libnative_eosio.a \\\n"
-//                   "  "
-//                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-//                   "eosLibs/libnative_rt.a \\\n"
-//                   "  "
-                   "--entry-point=" +
-                   _funcName + " --output-dir=" + _outPath + " " + _path +
-                   "/tmp.ll");
+    string command(
+        "klee \\\n"
+        "  "
+        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        "eosLibs/wasm-rt-impl.bc \\\n"
+        "  "
+        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        "eosLibs/intrinsics.bc \\\n"
+        "  "
+        //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        //                   "eosLibs/libnative_c.a \\\n"
+        //                   "  "
+        //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        //                   "eosLibs/libnative_eosio.a \\\n"
+        //                   "  "
+        //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        //                   "eosLibs/libnative_rt.a \\\n"
+        //                   "  "
+        "--entry-point=" +
+        _funcName + " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     //    string command("klee  --entry-point=" + _funcName +
     //                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     cout << endl;

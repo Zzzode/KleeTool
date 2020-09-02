@@ -293,14 +293,14 @@ public:
     regex  funcRex;
     smatch funcRexRes;
     string tmpStr("define .* @" + _funcName + R"(\(.*\))");
-    for (int i = 0; i < tmpStr.length(); i++){
+    for (int i = 0; i < tmpStr.length(); i++) {
       if (tmpStr[i] == '$') {
         tmpStr[i] = '\\';
         tmpStr.insert(tmpStr.begin() + i + 1, '$');
         i++;
       }
     }
-//    cout << tmpStr << endl;
+    //    cout << tmpStr << endl;
     funcRex = tmpStr;
 
     //        cout << "!!!" << _funcName << endl;
@@ -385,45 +385,158 @@ public:
     return localSyms[_reg->GetPureName()].GetNum();
   }
 
+  void RemoveLoacalSymDecl(RegName* _reg){
+    localSyms.erase(_reg->GetPureName());
+    symCount--;
+  }
+
+  inline int FindSize(const string& _type) {
+    int    resSize = 0;
+    regex  typeDef(R"( = type \{ (.*) \})");
+    smatch typeDefRes;
+    for (auto& fileLine : fileLines) {
+      if (fileLine.find("define ") != string::npos)
+        break;
+      if (fileLine.find(_type + " = type") != string::npos) {
+        if (regex_search(fileLine, typeDefRes, typeDef)) {
+          vector<string> argTypes;
+          string         _types(typeDefRes[1].str());
+          regex          structRex(R"((%[\"]*[\w\.\:]*[\"]*))");
+          regex          typeIntDef(R"(i\d+)");
+          regex          typePtrDef(R"([%\"\w\.\:]*\*)");
+          regex          typeArray(R"(\[(\d+) x i(\d+)\])");
+          smatch         structRexRes, intRexRes, ptrRexRes, arrayRexRes;
+          string         tmp;
+          while (!_types.empty()) {
+            tmp = _types;
+            if (regex_search(_types, ptrRexRes, typePtrDef))
+              argTypes.push_back(ptrRexRes[0].str());
+            else if (regex_search(_types, structRexRes, structRex))
+              argTypes.push_back(structRexRes[1].str());
+            else if (regex_search(_types, intRexRes, typeIntDef))
+              argTypes.push_back(intRexRes[0].str());
+            else if (regex_search(_types, arrayRexRes, typeArray))
+              argTypes.push_back(arrayRexRes[0].str());
+
+            int pos = _types.find(argTypes.back());
+            if (pos != string::npos)
+              _types.erase(pos, argTypes.back().length());
+            if (_types[0] == ',')
+              _types.erase(0, 2);
+            if (_types[0] == ' ')
+              _types.erase(0, 1);
+            if (tmp == _types)
+              return 0;
+          }
+          // 对每个成员进行读取
+          regex  typeIntSize(R"(i(\d+))");
+          smatch intSizeRes, typePtrDefRes;
+          for (const auto& argType : argTypes) {
+            if (regex_match(argType, intSizeRes, typeIntSize))
+              resSize += stoi(intSizeRes[1].str()) / 8;
+            else if (regex_match(argType, typePtrDefRes, typePtrDef))
+              resSize += 4;
+            else if (regex_search(_types, arrayRexRes, typeArray))
+              resSize += stoi(arrayRexRes[1].str()) * stoi(arrayRexRes[2]) /8;
+            else
+              resSize += FindSize(argType);
+          }
+          break;
+        }
+      }
+    }
+    return resSize;
+  }
+
   void AddLocalSymDecl(LLVMFunction _llvmFunc) {
     FuncDefine     func;
     smatch         funcRes;
     vector<string> funcLines = _llvmFunc.GetNewLines();
     string         defineStr = funcLines.front();
     // cout << "debug: " << defineStr << endl;
-    regex funcRex(R"(define[ interal]* (.*) [@\"]*(.*)[\"]*\((.*)\))");
+    regex funcRex(
+        R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\))");
     if (regex_search(defineStr, funcRes, funcRex))
       func.Init(funcRes);
-
+    int lineCount = 0;
     for (auto arg : func.GetArgs()) {
-      for (int i = 0; i < funcLines.size(); ++i) {
-        if (funcLines[i].find("store " + arg.GetString() + ", ") !=
-            string::npos) {
-          StoreInst storeInst;
-          storeInst.Init(funcLines[i]);
-          RegName* _dest = storeInst.GetDest();
-          int      num   = AddLocalSymDecl(_dest);
-          // cout << "debug dest: " << _dest->GetString() << endl;
+      string argType = arg.GetType();
+      string argName = arg.GetName();
+      // 如果为eos的第一个参数 即合约本身 跳过
+      if (argType.find("%") != string::npos &&
+          argName.find("0") != string::npos)
+        continue;
+      // 临时的store指令
+      string tmpStoreStr("store " + arg.GetString() + ", ");
+      // 临时的寄存器对象
+      RegName* _source =
+          new RegName(arg.GetType(), arg.GetAttr(), arg.GetThisName(),
+                      arg.GetCount(), arg.GetHasQuote());
+      // 临时的字符串，用于替换
+      vector<string> tmpLines;
+      string         tmpLine;
+      // 如果类型本身是指针
+      if (argType.find("*") != string::npos) {
+        // 当前全局符号数值
+        int num = AddLocalSymDecl(_source);
+        tmpLines.push_back("  %\"bitcast_" + to_string(num) + "\" = bitcast " +
+                           _source->GetString() + " to i8*");
+        tmpLine = "  call void @klee_make_symbolic(i8* " +
+                  ("%\"bitcast_" + to_string(num) + "\"");
 
-          vector<string> tmpLines;
-          string         tmpLine;
-          tmpLines.push_back("  %\"bitcast_" + to_string(num) +
-                             "\" = bitcast " + _dest->GetString() + " to i8*");
-          tmpLine = "  call void @klee_make_symbolic(i8* " +
-                    ("%\"bitcast_" + to_string(num) + "\"");
-          tmpLine += ", i64 " + to_string(_dest->GetSize() / 8);
+        int sourceSize = 0;
+        if (_source->GetSize() == 0) {
+          // TODO 从全局声明中找到大小
+          string _type = _source->GetType();
+          int    pos   = _type.find('*');
+          if (pos != string::npos)
+            _type.erase(pos, 1);
+          sourceSize = FindSize(_type);
+        } else
+          sourceSize = _source->GetSize() / 8;
+        if (sourceSize != 0) {
+          tmpLine += ", i64 " + to_string(sourceSize);
           tmpLine += ", i8* getelementptr inbounds ([";
-          tmpLine += to_string(_dest->GetPureName().size() + 1) + " x i8], [" +
-                     to_string(_dest->GetPureName().size() + 1) +
+          tmpLine += to_string(_source->GetPureName().size() + 1) +
+                     " x i8], [" +
+                     to_string(_source->GetPureName().size() + 1) +
                      " x i8]* @klee_str";
           tmpLine += num == 0 ? "" : "." + to_string(num);
           tmpLine += ", i64 0, i64 0))";
           tmpLines.push_back(tmpLine);
-
-          funcLines.insert(funcLines.begin() + i + 1, tmpLines.begin(),
-                           tmpLines.end());
+        } else {
+          RemoveLoacalSymDecl(_source);
+          tmpLines.clear();
         }
+      } else {  // 如果不是指针 这里需要自己写store指令
+        RegName* _dest = new RegName(_source->GetType() + "*", "%",
+                                     "myDest_" + to_string(symCount), 0, false);
+        // 当前全局符号数值
+        int    num = AddLocalSymDecl(_source);
+        string myAllocInst("  " + _dest->GetName() + " = alloca " +
+                           _source->GetType());
+        tmpLines.push_back(myAllocInst);
+        string myStoreInst("  store " + _source->GetString() + ", " +
+                           _dest->GetString());
+        tmpLines.push_back(myStoreInst);
+        tmpLines.push_back("  %\"bitcast_" + to_string(num) + "\" = bitcast " +
+                           _dest->GetString() + " to i8*");
+        tmpLine = "  call void @klee_make_symbolic(i8* " +
+                  ("%\"bitcast_" + to_string(num) + "\"");
+        // TODO 这里可能也需要判断size
+        tmpLine += ", i64 " + to_string(_dest->GetSize() / 8);
+        tmpLine += ", i8* getelementptr inbounds ([";
+        tmpLine += to_string(_source->GetPureName().size() + 1) + " x i8], [" +
+                   to_string(_source->GetPureName().size() + 1) +
+                   " x i8]* @klee_str";
+        tmpLine += num == 0 ? "" : "." + to_string(num);
+        tmpLine += ", i64 0, i64 0))";
+        tmpLines.push_back(tmpLine);
       }
+      if (!tmpLines.empty())
+        funcLines.insert(funcLines.begin() + 1 + lineCount, tmpLines.begin(),
+                         tmpLines.end());
+      lineCount += tmpLines.size();
     }
     _llvmFunc.WriteNewLines(funcLines);
     Replace(_llvmFunc.StartLine(), _llvmFunc.EndLine(), funcLines);
