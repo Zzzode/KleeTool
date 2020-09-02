@@ -6,8 +6,9 @@
 
 #include <chrono>
 //#include <csignal>
-#include <cstring>
 #include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <cstring>
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
@@ -19,6 +20,7 @@
 #include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -331,8 +333,8 @@ public:
         if (std::count(posStr.begin(), posStr.end(), '\"') == 2)
           argTypes.push_back(posStr);
         else if (std::count(posStr.begin(), posStr.end(), '\"') == 1) {
-          isStruct = true;
-          structArg  = posStr;
+          isStruct  = true;
+          structArg = posStr;
           if (tmpPos == end)
             argTypes.push_back(structArg);
         } else
@@ -743,6 +745,8 @@ public:
 
   bool GetFiles();
 
+  bool GetFiles(const string& _path, vector<string>& _folderNames);
+
   bool ParseJson(const string& folderName);
 
   void FunChains(const string& folderName);
@@ -777,9 +781,9 @@ public:
         "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
         "eosLibs/wasm-rt-impl.bc \\\n"
         "  "
-        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-        "eosLibs/intrinsics.bc \\\n"
-        "  "
+        //        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        //        "eosLibs/intrinsics.bc \\\n"
+        //        "  "
         //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
         //                   "eosLibs/libnative_c.a \\\n"
         //                   "  "
@@ -789,41 +793,45 @@ public:
         //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
         //                   "eosLibs/libnative_rt.a \\\n"
         //                   "  "
+        //        "--posix-runtime \\\n"
+        //        "  "
         "--entry-point=" +
         _funcName + " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     //    string command("klee  --entry-point=" + _funcName +
     //                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     cout << endl;
     cout << command << endl;
-    //    system(command.c_str());
-    thread runShell([&] { system(command.c_str()); });
-    runShell.detach();
-    // system(command.c_str());
-    for (int i = 0; i < 1000; i++)
-      if (!runShell.joinable())
-        break;
-    for (int j = 0; j < 10000; j++)
-      for (int k = 0; k < 10000; k++)
-        ;
-
-    if (runShell.joinable())
-      system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
-    // system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
-
-    ExtractInfo(_funcName, _folderName, _inst, _instIndex, _chainIndex);
+    system(command.c_str());
+    //    thread runShell([&] { system(command.c_str()); });
+    //    runShell.detach();
+    //    // system(command.c_str());
+    //    for (int i = 0; i < 1000; i++)
+    //      if (!runShell.joinable())
+    //        break;
+    //    for (int j = 0; j < 10000; j++)
+    //      for (int k = 0; k < 10000; k++)
+    //        ;
+    //
+    //    if (runShell.joinable())
+    //      system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
   }
 
-  void ExtractInfo(const string& _funcName,
+  bool ExtractInfo(const string& _funcName,
                    const string& _folderName,
                    const string& _inst,
                    const string& _instIndex,
                    const string& _chainIndex) {
+    bool   hasSolution = false;
     string _path(path + "/" + _folderName);
     string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
     string _outPath(_outFolder + "/inst" + _instIndex);
 
     if (access((_outPath + "/assembly.ll").c_str(), 0) != -1)
       system(("rm " + _outPath + "/assembly.ll").c_str());
+    if (access((_outPath + "/run.istats").c_str(), 0) != -1)
+      system(("rm " + _outPath + "/run.istats").c_str());
+    if (access((_outPath + "/run.stats").c_str(), 0) != -1)
+      system(("rm " + _outPath + "/run.stats").c_str());
 
     ofstream out;
     ifstream in;
@@ -833,6 +841,26 @@ public:
     if (out.is_open())
       out << _inst << endl;
     out.close();
+
+    vector<string> outFolderNames;
+    if (GetFiles(_outPath, outFolderNames)) {
+      set<string> outWithoutErr;
+      set<string> outWithErr;
+      for (auto outFileName : outFolderNames) {
+        vector<string> fileSplits;
+        split(fileSplits, outFileName, boost::is_any_of("."));
+        if (outFileName.find(".ktest") != string::npos)
+          outWithoutErr.emplace(fileSplits.front());
+        if (outFileName.find(".err") != string::npos) {
+          outWithErr.emplace(fileSplits.front());
+        }
+      }
+      for (auto errFile : outWithErr)
+        if (outWithoutErr.count(errFile) != 0)
+          outWithoutErr.erase(errFile);
+      if (!outWithoutErr.empty())
+        hasSolution = true;
+    }
     // 获取所有ktest文件名
     vector<string> ktestFiles;
     if (GetTargetFiles(_outPath, ktestFiles, ".ktest")) {
@@ -843,6 +871,7 @@ public:
         // cout << command << endl;
       }
     }
+    return hasSolution;
   }
 
   static bool GetTargetFiles(const string&   _path,

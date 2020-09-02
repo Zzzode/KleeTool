@@ -448,7 +448,7 @@ public:
     return resSize;
   }
 
-  void AddLocalSymDecl(LLVMFunction _llvmFunc) {
+  int AddLocalSymDecl(LLVMFunction _llvmFunc) {
     FuncDefine     func;
     smatch         funcRes;
     vector<string> funcLines = _llvmFunc.GetNewLines();
@@ -540,6 +540,7 @@ public:
     }
     _llvmFunc.WriteNewLines(funcLines);
     Replace(_llvmFunc.StartLine(), _llvmFunc.EndLine(), funcLines);
+    return func.GetArgs().size();
   }
 
   void WriteGlobalSymDecl() {

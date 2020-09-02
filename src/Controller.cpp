@@ -69,6 +69,27 @@ bool Controller::GetFiles() {
   return true;
 }
 
+bool Controller::GetFiles(const string& _path, vector<string>& _folderNames) {
+  DIR*           dir;
+  struct dirent* ptr;
+
+  if ((dir = opendir(_path.c_str())) == nullptr) {
+    perror("Open dir error...");
+    return false;
+  }
+
+  while ((ptr = readdir(dir)) != nullptr) {
+    if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0 ||
+        ptr->d_type == 10)  /// current dir OR parent dir OR link file
+      continue;
+    else if (ptr->d_type == 4 || ptr->d_type == 8)  /// dir | file
+      _folderNames.emplace_back(ptr->d_name);
+  }
+  closedir(dir);
+
+  return true;
+}
+
 void Controller::Entry() {
   if (GetFiles()) {
     for (const auto& folderName : folderNames) {
@@ -100,7 +121,7 @@ void Controller::Entry() {
 
 void Controller::FunChains(const string& folderName) {
   assert(document.IsArray());
-
+  int limitInsts = 0;
   // document.Size为调用链数量
   funcChains->InitChains(document.Size());
   // 增加EOS平台的ll文件路径检测
@@ -219,12 +240,13 @@ void Controller::FunChains(const string& folderName) {
 
       thisChain.ReturnFunction(funcIndex, thisFunc);
       funcIndex++;
+      // limitInsts += (funPtr.MemberBegin() + 1)->value.GetArray().Size();
     }
     cout << "debug: 3" << endl;
     // find out start func in this call chain
     Function& startFunc = thisChain.ReturnChainStart();
     // add global symbols and local symbols
-    thisLLVMFile->AddLocalSymDecl(
+    int argCount = thisLLVMFile->AddLocalSymDecl(
         thisLLVMFile->InitFuncLines(startFunc.GetFuncName()));
     // thisLLVMFile->WriteGlobalSymDecl();
 
@@ -269,10 +291,23 @@ void Controller::FunChains(const string& folderName) {
         cout << "debug: 6" << endl;
         thisLLVMFile->CreateFile("tmp.ll");
         // call `klee --entry-point=thisFuncName`
-        if (thisLLVMFile->symCount > 0)
+        if (thisLLVMFile->symCount == argCount) {
           RunKlee(startFunc.GetFuncName(), folderName,
                   tmpAssumes.front().GetInst(), to_string(i),
                   to_string(chainIndex));
+          bool hasSolution = ExtractInfo(startFunc.GetFuncName(), folderName,
+                                         tmpAssumes.front().GetInst(),
+                                         to_string(i), to_string(chainIndex));
+          limitInsts++;
+          if (hasSolution)
+            return;
+          if (limitInsts > 1500) {
+            cout << "Limited instructions!" << endl;
+            return;
+          }
+          cout << "Run klee " << limitInsts << " times" << endl;
+        } else
+          cout << "lack of func args symbol" << endl;
       }
       // TODO need to find out constructions and call KLEE
 
