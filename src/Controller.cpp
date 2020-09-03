@@ -299,11 +299,13 @@ void Controller::FunChains(const string& folderName) {
                                          tmpAssumes.front().GetInst(),
                                          to_string(i), to_string(chainIndex));
           limitInsts++;
-          if (hasSolution)
-            return;
+          if (hasSolution) {
+            cout << "Find Solution!" << endl;
+            // return;
+          }
           if (limitInsts > 1500) {
             cout << "Limited instructions!" << endl;
-            return;
+            // return;
           }
           cout << "Run klee " << limitInsts << " times" << endl;
         } else
@@ -314,7 +316,7 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
       cout << "debug: 7" << endl;
-      // exit(0);
+//       exit(0);
     }
     //    exit(0);
     thisLLVMFile->Refresh();

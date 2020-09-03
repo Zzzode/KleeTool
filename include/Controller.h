@@ -303,8 +303,10 @@ public:
         R"(([%\"]*.*[%\"]*[\*]*)[ nocapture]*[ readonly]*[ dereferenceable\(\d+\)]*[ byval]*[ align \d]*[ noalias]*[ sret]*)";
   }
 
+  // define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\)
   void Init(const smatch& instRexRes) {
     string _type    = instRexRes[1].str();
+    type = instRexRes[1].str();
     bool   hasQuote = false;
     if (instRexRes[0].str().find("\"") != string::npos)
       hasQuote = true;
@@ -365,11 +367,16 @@ public:
     return funcArgs.size();
   }
 
+  RegName* GetFunc(){
+    return func;
+  }
+
 private:
   regex funcArgsRex;
   regex funcArgsConstRex;
   regex funcArgsRegRex;
   regex funcArgsNoVar;
+  string type ;
 
   RegName*        func;
   vector<RegName> funcArgs;
@@ -777,10 +784,8 @@ public:
     // 创建并执行指令
     string command(
         "klee \\\n"
-        "  "
-        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
+        "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
         "eosLibs/wasm-rt-impl.bc \\\n"
-        "  "
         //        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
         //        "eosLibs/intrinsics.bc \\\n"
         //        "  "
@@ -795,8 +800,10 @@ public:
         //                   "  "
         //        "--posix-runtime \\\n"
         //        "  "
-        "--entry-point=" +
-        _funcName + " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
+        "  -max-time=3min \\\n"
+        "  --entry-point=klee_test"
+        "  --output-dir=" +
+        _outPath + "  " + _path + "/tmp.ll");
     //    string command("klee  --entry-point=" + _funcName +
     //                   " --output-dir=" + _outPath + " " + _path + "/tmp.ll");
     cout << endl;

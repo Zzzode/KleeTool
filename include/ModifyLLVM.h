@@ -385,7 +385,7 @@ public:
     return localSyms[_reg->GetPureName()].GetNum();
   }
 
-  void RemoveLoacalSymDecl(RegName* _reg){
+  void RemoveLoacalSymDecl(RegName* _reg) {
     localSyms.erase(_reg->GetPureName());
     symCount--;
   }
@@ -437,7 +437,7 @@ public:
             else if (regex_match(argType, typePtrDefRes, typePtrDef))
               resSize += 4;
             else if (regex_search(_types, arrayRexRes, typeArray))
-              resSize += stoi(arrayRexRes[1].str()) * stoi(arrayRexRes[2]) /8;
+              resSize += stoi(arrayRexRes[1].str()) * stoi(arrayRexRes[2]) / 8;
             else
               resSize += FindSize(argType);
           }
@@ -455,7 +455,7 @@ public:
     string         defineStr = funcLines.front();
     // cout << "debug: " << defineStr << endl;
     regex funcRex(
-        R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\))");
+        R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]*[ dso_local]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\))");
     if (regex_search(defineStr, funcRes, funcRex))
       func.Init(funcRes);
     int lineCount = 0;
@@ -538,6 +538,46 @@ public:
                          tmpLines.end());
       lineCount += tmpLines.size();
     }
+    int            argsCount = func.GetArgs().size();
+    vector<string> testFunc;
+    testFunc.emplace_back("define internal void @klee_test() #0 {");
+    // 增加test调用
+    for (int i = 0; i < 2 * argsCount; i++) {
+      if (i < argsCount)
+        testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
+                           func.GetArgs()[i].GetType());
+      else
+        testFunc.push_back("  %" + to_string(i + 1) + " = load " +
+                           func.GetArgs()[i - argsCount].GetType() + ", " +
+                           func.GetArgs()[i - argsCount].GetType() + "* %" +
+                           to_string(i + 1 - argsCount));
+    }
+    //    string defineLine = funcLines.front();
+    if (func.GetFunc()->GetType().find("void") == string::npos) {
+      testFunc.push_back("  %" + to_string(2 * argsCount + 1) + " = call " +
+                         func.GetFunc()->GetString());
+      testFunc.back() +=
+          "(" + func.GetArgs()[0].GetType() + " %" + to_string(argsCount + 1);
+      for (int i = 1; i < argsCount; i++) {
+        testFunc.back() += ", " + func.GetArgs()[i].GetType() + " %" +
+                           to_string(i + argsCount + 1);
+      }
+    } else {
+      testFunc.push_back("  call " + func.GetFunc()->GetString());
+      testFunc.back() +=
+          "(" + func.GetArgs()[0].GetType() + " %" + to_string(argsCount + 1);
+      for (int i = 1; i < argsCount; i++) {
+        testFunc.back() += ", " + func.GetArgs()[i].GetType() + " %" +
+                           to_string(i + argsCount + 1);
+      }
+    }
+    testFunc.back() += ")";
+    testFunc.emplace_back("  ret void");
+    testFunc.emplace_back("}");
+
+    funcLines.emplace_back("");
+    funcLines.insert(funcLines.end(), testFunc.begin(), testFunc.end());
+
     _llvmFunc.WriteNewLines(funcLines);
     Replace(_llvmFunc.StartLine(), _llvmFunc.EndLine(), funcLines);
     return func.GetArgs().size();
