@@ -1,5 +1,5 @@
 //
-// Created by zode on 2020/6/29.
+// Created by xxxx on xxxx/xx/xx.
 //
 #ifndef KLEE_MODIFYLLVM_H
 #define KLEE_MODIFYLLVM_H
@@ -17,7 +17,7 @@
 using namespace std;
 
 /**
- * @brief 只有算数指令需要klee_assume()
+ * @brief Only the arithmetic instruction needs klee_assume()
  */
 class KleeAssume {
   //    %11 = load i32, i32* %3
@@ -272,7 +272,7 @@ public:
     return fileName;
   }
 
-  // 替换原函数
+  // Substitution function
   void Replace(int _start, int _end, vector<string> _newStr) {
     vector<string>::iterator iter;
     iter = fileLines.erase(fileLines.begin() + _start,
@@ -281,7 +281,7 @@ public:
   }
 
   /**
-   * 返回文件中的行数和函数
+   * Returns the number of lines and functions in the file
    * @param _funcName
    * @return
    */
@@ -343,7 +343,7 @@ public:
     return fileLines;
   }
 
-  // 创建新文件
+  // Create a new file
   void CreateFile(const string& _newName) {
     ofstream newFile(filePath + "/" + _newName, ios::out);
     for (const auto& fileLine : fileLines)
@@ -428,7 +428,7 @@ public:
             if (tmp == _types)
               return 0;
           }
-          // 对每个成员进行读取
+          // Read each member
           regex  typeIntSize(R"(i(\d+))");
           smatch intSizeRes, typePtrDefRes;
           for (const auto& argType : argTypes) {
@@ -462,22 +462,22 @@ public:
     for (auto arg : func.GetArgs()) {
       string argType = arg.GetType();
       string argName = arg.GetName();
-      // 如果为eos的第一个参数 即合约本身 跳过
+      // If the first parameter for EOS, the contract itself, skipped
       if (argType.find("%") != string::npos &&
           argName.find("0") != string::npos)
         continue;
-      // 临时的store指令
+      // Temporary store instruction
       string tmpStoreStr("store " + arg.GetString() + ", ");
-      // 临时的寄存器对象
+      // A temporary register object
       RegName* _source =
           new RegName(arg.GetType(), arg.GetAttr(), arg.GetThisName(),
                       arg.GetCount(), arg.GetHasQuote());
-      // 临时的字符串，用于替换
+      // A temporary string used for substitution
       vector<string> tmpLines;
       string         tmpLine;
-      // 如果类型本身是指针
+      // If the type itself is a pointer
       if (argType.find("*") != string::npos) {
-        // 当前全局符号数值
+        // Current global symbol value
         int num = AddLocalSymDecl(_source);
         tmpLines.push_back("  %\"bitcast_" + to_string(num) + "\" = bitcast " +
                            _source->GetString() + " to i8*");
@@ -486,7 +486,7 @@ public:
 
         int sourceSize = 0;
         if (_source->GetSize() == 0) {
-          // TODO 从全局声明中找到大小
+          // Find the size from the global declaration
           string _type = _source->GetType();
           int    pos   = _type.find('*');
           if (pos != string::npos)
@@ -508,7 +508,7 @@ public:
           RemoveLoacalSymDecl(_source);
           tmpLines.clear();
         }
-      } else {  // 如果不是指针 这里需要自己写store指令
+      } else {  // If it's not a pointer you have to write your own store
         RegName* _dest = new RegName(_source->GetType() + "*", "%",
                                      "myDest_" + to_string(symCount), 0, false);
         // 当前全局符号数值
@@ -523,7 +523,7 @@ public:
                            _dest->GetString() + " to i8*");
         tmpLine = "  call void @klee_make_symbolic(i8* " +
                   ("%\"bitcast_" + to_string(num) + "\"");
-        // TODO 这里可能也需要判断size
+        // TODO might also need to determine size here
         tmpLine += ", i64 " + to_string(_dest->GetSize() / 8);
         tmpLine += ", i8* getelementptr inbounds ([";
         tmpLine += to_string(_source->GetPureName().size() + 1) + " x i8], [" +
@@ -541,7 +541,7 @@ public:
     int            argsCount = func.GetArgs().size();
     vector<string> testFunc;
     testFunc.emplace_back("define internal void @klee_test() #0 {");
-    // 增加test调用
+    // Add the test call
     for (int i = 0; i < 2 * argsCount; i++) {
       if (i < argsCount)
         testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
@@ -634,7 +634,7 @@ private:
 
 private:
   unordered_map<string, LLVMFunction> llvmFunctions;
-  // store以及load的全局变量
+  // Global variables for store and Load
   set<RegName*> globalSymbols;
 
   unordered_map<string, Symbol> globalSyms;

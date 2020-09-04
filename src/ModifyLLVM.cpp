@@ -1,5 +1,5 @@
 //
-// Created by zode on 2020/6/29.
+// Created by xxxx on xxxx/xx/xx.
 //
 #include "ModifyLLVM.h"
 #include <cstring>
@@ -14,10 +14,10 @@
 
 vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
                                               const string& _inst) {
-  cout << "debug: 4.0" << endl;
+  // cout << "debug: 4.0" << endl;
   vector<string> funcLines(_llFunction.GetNewLines());
   vector<string> _res;
-  cout << "debug: 4.1" << endl;
+  // cout << "debug: 4.1" << endl;
   // init this instruction
   Instruction thisInst;
   thisInst.InitInst(_inst);
@@ -26,12 +26,12 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
   for (int i = 0; i < funcLines.size(); ++i) {
     string funcLine = funcLines[i];
     if (funcLine.find(_inst) != string::npos) {
-      cout << "debug: 4.2" << endl;
-      // 初始化临时变量
+      // cout << "debug: 4.2" << endl;
+      // Initializes a temporary variable
       Instruction lLoadInst, rLoadInst;
       RegName*    rightSource = nullptr;
       RegName*    leftSource  = nullptr;
-      // 判断左右操作数是否存在
+      // Determine if left and right operands exist
       if (thisArithInst->GetReg(2)->GetAttr() != "constant") {
         int j = 1;
         while (i - j >= 0) {
@@ -45,7 +45,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
               loadStr = funcLines[i - j - 1];
             } else
               break;
-            // 如果从全局结构体中初始化
+            // If initialized from a global structure
             if (loadStr.find("getelementptr") != string::npos) {
               break;
             }
@@ -92,7 +92,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
               loadStr = funcLines[i - j - 1];
             } else
               break;
-            // 如果从全局结构体中初始化
+            // If initialized from a global structure
             if (loadStr.find("getelementptr") != string::npos) {
               break;
             }
@@ -105,7 +105,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         }
         if (rightSource != nullptr) {
           if (rightSource->GetAttr() == "@") {
-            // 如果left source存在
+            // If the left Source exists
             if (leftSource != nullptr)
               if (rightSource->GetPureName() == leftSource->GetPureName())
                 break;
@@ -130,7 +130,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
           }
         }
       }
-      cout << "debug: 4.3" << endl;
+      // cout << "debug: 4.3" << endl;
       break;
     }
   }
@@ -159,26 +159,26 @@ vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&         _llFunction,
 }
 
 /**
- * 暂时不用
+ * Temporary don't have to use
  * @param _inst
  * @param _llFunction
  * @return
  */
-vector<string> ModifyLLVM::ModifyCallInst(FuncCall*     _inst,
-                                          LLVMFunction& _llFunction) {
-  vector<string> funcLines = _llFunction.GetNewLines();
-  int            argNum    = _inst->GetArgNum();
-  // _llFunction.Show();
-
-  for (int i = 0; i < funcLines.size(); ++i) {
-    string funcLine = funcLines[i];
-    if (funcLine.find(_inst->GetString()) != string::npos) {
-      ;
-    }
-  }
-
-  return vector<string>();
-}
+//vector<string> ModifyLLVM::ModifyCallInst(FuncCall*     _inst,
+//                                          LLVMFunction& _llFunction) {
+//  vector<string> funcLines = _llFunction.GetNewLines();
+//  int            argNum    = _inst->GetArgNum();
+//  // _llFunction.Show();
+//
+//  for (int i = 0; i < funcLines.size(); ++i) {
+//    string funcLine = funcLines[i];
+//    if (funcLine.find(_inst->GetString()) != string::npos) {
+//      ;
+//    }
+//  }
+//
+//  return vector<string>();
+//}
 
 vector<string> ModifyLLVM::ModifyStoreInst(StoreInst*    _inst,
                                            LLVMFunction& _llFunction) {

@@ -1,5 +1,8 @@
+//
+// Created by xxxx on xxxx/xx/xx.
+//
 #include "Controller.h"
-#include "ModifyLLVM.h"
+//#include "ModifyLLVM.h"
 
 int main(int argc, char** argv) {
   if (argc == 1) {
@@ -9,7 +12,6 @@ int main(int argc, char** argv) {
 
   string path = argv[1];
 
-  // TODO 多线程
   Controller controller(path);
   controller.Entry();
 

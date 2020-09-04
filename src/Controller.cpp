@@ -1,5 +1,5 @@
 //
-// Created by zode on 2020/7/16.
+// Created by xxxx on xxxx/xx/xx.
 //
 
 #include "Controller.h"
@@ -104,13 +104,13 @@ void Controller::Entry() {
       if (access((thisPath + "/time.txt").c_str(), 0) == -1) {
         // start
         start_t = clock();
-        // 存在json
+        // There is a json
         if (ParseJson(folderName))
           FunChains(folderName);
 
-        // 结束计时
+        // The end of the timing
         end_t = clock();
-        // 输出时间
+        // The output of time
         double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
         ofstream out(path + "/" + folderName + "/time.txt");
         out << "time = " << endtime << " s" << endl;
@@ -122,9 +122,9 @@ void Controller::Entry() {
 void Controller::FunChains(const string& folderName) {
   assert(document.IsArray());
   int limitInsts = 0;
-  // document.Size为调用链数量
+  // document.size is the number of call chains
   funcChains->InitChains(document.Size());
-  // 增加EOS平台的ll文件路径检测
+  // Added LL file path detection for EOS platform
   vector<string> llFiles;
   string         llFileName;
   if (!GetTargetFiles(path + "/" + folderName, llFiles, "ll")) {
@@ -145,13 +145,13 @@ void Controller::FunChains(const string& folderName) {
       break;
     }
   }
-  // 初始化modify llvm相关
+  // Initialize modify LLVM correlation
   ModifyLLVM modifyLlvm(llFileName, path + "/" + folderName, document.Size());
   LLVMFile*  thisLLVMFile = modifyLlvm.GetLLVMFile();
   cout << "file name = " << thisLLVMFile->GetFileName() << endl;
 
   int chainIndex = 0;
-  // 每一个循环都是一个调用链
+  // Each loop is a call chain
   for (auto& funChain : document.GetArray()) {
     cout << "/////// Function Chain " << to_string(chainIndex) << " ///////"
          << endl;
@@ -160,12 +160,12 @@ void Controller::FunChains(const string& folderName) {
     thisChain.InitFunc(funChain.Size());
 
     cout << "debug: 1" << endl;
-    // TODO 可以在这里定位文件中的调用链
-    // 一次定位的目的是减少IO耗时 但实际上最好的方法是一步到位
+    // TODO can locate the call chain in the file here
+    // The goal of a location is to reduce IO time but in fact the best way is to get it all in one step
     // LLVMFuncChain thisLLVMChain = thisLLVMFile->GetLLVMChain(chainIndex);
     // thisLLVMChain.Init(funChain.Size());
 
-    // 每一个循环都是一个函数
+    // Each of these loops is a function
     int funcIndex = 0;
     for (auto& funPtr : funChain.GetArray()) {
       Function thisFunc = thisChain.GetFunction(funcIndex);
@@ -176,13 +176,13 @@ void Controller::FunChains(const string& folderName) {
       thisFunc.InitInsts((funPtr.MemberBegin() + 1)->value.Size());
       // cout << "funcName = " << thisFunc.GetFuncName() << endl;
 
-      // 读入函数文件
+      // Read into the function file
       string funcName = thisFunc.GetFuncName();  // cout << funcName << endl;
       LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(funcName);
       // thisLLVMFunc.Show();
 
       int instNum = 0;
-      // 每一次循环都是一条指令
+      // Each loop is an instruction
       for (auto& inst : (funPtr.MemberBegin() + 1)->value.GetArray()) {
         assert(inst.IsObject());
         Instruction thisInst = thisFunc.GetInst(instNum);
@@ -191,8 +191,8 @@ void Controller::FunChains(const string& folderName) {
         //        cout << thisInst.GetType() << ": " << thisInst.GetString() <<
         //        endl;
 
-        // 当指令为算数操作时用klee_assume
-        // TODO global variables need to be symbolic
+        // Klee_assume is used when the instruction is an arithmetic operation
+        // global variables need to be symbolic
         if (thisInst.GetType() == 1) {
           auto   arithInst = static_cast<ArithOp*>(thisInst.GetInst());
           string instStr   = (inst.MemberBegin() + 1)->value.GetString();
@@ -242,7 +242,7 @@ void Controller::FunChains(const string& folderName) {
       funcIndex++;
       // limitInsts += (funPtr.MemberBegin() + 1)->value.GetArray().Size();
     }
-    cout << "debug: 3" << endl;
+    // cout << "debug: 3" << endl;
     // find out start func in this call chain
     Function& startFunc = thisChain.ReturnChainStart();
     // add global symbols and local symbols
@@ -251,14 +251,14 @@ void Controller::FunChains(const string& folderName) {
     // thisLLVMFile->WriteGlobalSymDecl();
 
     // find out the end func in this call chain
-    cout << "debug: 3.1" << endl;
+    // cout << "debug: 3.1" << endl;
     string             endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
         thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
-    cout << "debug: 3.2" << endl;
+    // cout << "debug: 3.2" << endl;
     LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
     thisLLVMFile->SetTmpLines();
-    cout << "debug: 3.3" << endl;
+    // cout << "debug: 3.3" << endl;
     //    vector<string> newStr =
     //        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc,
     //        assumes.front().GetInst());
@@ -285,10 +285,10 @@ void Controller::FunChains(const string& folderName) {
             modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
         thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                               thisLLVMFunc.GetNewLines());
-        cout << "debug: 5" << endl;
+        // cout << "debug: 5" << endl;
         // inert global symbols' symbolic declaration
         thisLLVMFile->WriteGlobalSymDecl();
-        cout << "debug: 6" << endl;
+        // cout << "debug: 6" << endl;
         thisLLVMFile->CreateFile("tmp.ll");
         // call `klee --entry-point=thisFuncName`
         if (thisLLVMFile->symCount == argCount) {
@@ -315,7 +315,7 @@ void Controller::FunChains(const string& folderName) {
 
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
-      cout << "debug: 7" << endl;
+      // cout << "debug: 7" << endl;
 //       exit(0);
     }
     //    exit(0);

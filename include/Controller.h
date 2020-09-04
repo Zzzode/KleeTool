@@ -1,4 +1,5 @@
-// Created by zode on 2020/7/16.
+//
+// Created by xxxx on xxxx/xx/xx.
 //
 
 #ifndef MODIFYLLVM_CONTROLLER_H
@@ -665,7 +666,7 @@ private:
   bool isArith;
   bool isCall;
   bool isInit;
-  // 指令数量
+  // Order quantity
   unsigned int        instLength;
   string              funcName;
   vector<Instruction> instructions;
@@ -781,7 +782,7 @@ public:
         i++;
       }
     }
-    // 创建并执行指令
+    // Create and execute instructions
     string command(
         "klee \\\n"
         "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
@@ -842,9 +843,9 @@ public:
 
     ofstream out;
     ifstream in;
-    // 输出指令
+    // Output instruction
     out.open(_outPath + "/inst.txt");
-    // 判断文件是否已经打开
+    // Determine if the file is open
     if (out.is_open())
       out << _inst << endl;
     out.close();
@@ -868,7 +869,7 @@ public:
       if (!outWithoutErr.empty())
         hasSolution = true;
     }
-    // 获取所有ktest文件名
+    // Gets all kTest file names
     vector<string> ktestFiles;
     if (GetTargetFiles(_outPath, ktestFiles, ".ktest")) {
       for (int i = 0; i < ktestFiles.size(); i++) {
