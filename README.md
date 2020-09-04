@@ -43,7 +43,7 @@ Similarly, put all the data sets into KleeTest. At this point, there should be m
 
 Finally, run the KleeTool tool, taking the path to all the data set folders, such as KleeTest.
 
-```shell
+```shell script
 ~/Dataset/KleeTest/$ .../KleeTool/bin/KleeTool ~/Dataset/KleeTest/
 ```
 
