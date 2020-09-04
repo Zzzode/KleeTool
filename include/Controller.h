@@ -304,11 +304,12 @@ public:
         R"(([%\"]*.*[%\"]*[\*]*)[ nocapture]*[ readonly]*[ dereferenceable\(\d+\)]*[ byval]*[ align \d]*[ noalias]*[ sret]*)";
   }
 
-  // define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\)
+  // define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]* (.*)
+  // [@%\"]([\w+\$]*)[\"]*\((.*)\)
   void Init(const smatch& instRexRes) {
-    string _type    = instRexRes[1].str();
-    type = instRexRes[1].str();
-    bool   hasQuote = false;
+    string _type  = instRexRes[1].str();
+    type          = instRexRes[1].str();
+    bool hasQuote = false;
     if (instRexRes[0].str().find("\"") != string::npos)
       hasQuote = true;
 
@@ -368,16 +369,16 @@ public:
     return funcArgs.size();
   }
 
-  RegName* GetFunc(){
+  RegName* GetFunc() {
     return func;
   }
 
 private:
-  regex funcArgsRex;
-  regex funcArgsConstRex;
-  regex funcArgsRegRex;
-  regex funcArgsNoVar;
-  string type ;
+  regex  funcArgsRex;
+  regex  funcArgsConstRex;
+  regex  funcArgsRegRex;
+  regex  funcArgsNoVar;
+  string type;
 
   RegName*        func;
   vector<RegName> funcArgs;

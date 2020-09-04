@@ -5,7 +5,6 @@
 #include <iostream>
 #include <regex>
 
-
 vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
                                               const string& _inst) {
   // cout << "debug: 4.0" << endl;
@@ -52,7 +51,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
         }
         if (leftSource != nullptr) {
           if (leftSource->GetAttr() == "@") {
-            if (leftSource->GetName() == "@wasm_rt_call_stack_depth"){
+            if (leftSource->GetName() == "@wasm_rt_call_stack_depth") {
               _res.clear();
               _res.emplace_back("@wasm_rt_call_stack_depth");
               return _res;
@@ -103,7 +102,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
             if (leftSource != nullptr)
               if (rightSource->GetPureName() == leftSource->GetPureName())
                 break;
-            if (rightSource->GetName() == "@wasm_rt_call_stack_depth"){
+            if (rightSource->GetName() == "@wasm_rt_call_stack_depth") {
               _res.clear();
               _res.emplace_back("@wasm_rt_call_stack_depth");
               return _res;
@@ -158,7 +157,7 @@ vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&         _llFunction,
  * @param _llFunction
  * @return
  */
-//vector<string> ModifyLLVM::ModifyCallInst(FuncCall*     _inst,
+// vector<string> ModifyLLVM::ModifyCallInst(FuncCall*     _inst,
 //                                          LLVMFunction& _llFunction) {
 //  vector<string> funcLines = _llFunction.GetNewLines();
 //  int            argNum    = _inst->GetArgNum();

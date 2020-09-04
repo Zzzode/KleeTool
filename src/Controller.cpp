@@ -161,8 +161,9 @@ void Controller::FunChains(const string& folderName) {
 
     cout << "debug: 1" << endl;
     // TODO can locate the call chain in the file here
-    // The goal of a location is to reduce IO time but in fact the best way is to get it all in one step
-    // LLVMFuncChain thisLLVMChain = thisLLVMFile->GetLLVMChain(chainIndex);
+    // The goal of a location is to reduce IO time but in fact the best way is
+    // to get it all in one step LLVMFuncChain thisLLVMChain =
+    // thisLLVMFile->GetLLVMChain(chainIndex);
     // thisLLVMChain.Init(funChain.Size());
 
     // Each of these loops is a function
@@ -316,7 +317,7 @@ void Controller::FunChains(const string& folderName) {
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
       // cout << "debug: 7" << endl;
-//       exit(0);
+      //       exit(0);
     }
     //    exit(0);
     thisLLVMFile->Refresh();
