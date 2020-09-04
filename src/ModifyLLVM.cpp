@@ -2,15 +2,9 @@
 // Created by xxxx on xxxx/xx/xx.
 //
 #include "ModifyLLVM.h"
-#include <cstring>
-#include <dirent.h>
-#include <fstream>
 #include <iostream>
-#include <rapidjson/document.h>
-#include <rapidjson/filereadstream.h>
 #include <regex>
-#include <sys/stat.h>
-#include <unistd.h>
+
 
 vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
                                               const string& _inst) {
@@ -187,7 +181,7 @@ vector<string> ModifyLLVM::ModifyStoreInst(StoreInst*    _inst,
   for (int i = 0; i < funcLines.size(); ++i) {
     string funcLine = funcLines[i];
     if (funcLine.find(_inst->GetString()) != string::npos) {
-      // 添加全局变量符号化
+      // Add global variable symbolization
       int num = llvmFile->AddGlobalSymDecl(_inst->GetDest());
 
       string newStr(R"(  call void @klee_make_symbolic(i8* bitcast )");
