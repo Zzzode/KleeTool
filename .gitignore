@@ -87,13 +87,15 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-# Clion configure files
-**/.idea/
-
 # build files
 build/
 bin/
 
+### Clion files
+# Clion configure files
+**/.idea/
+
+### Other files
 # vscode files
 .vscode
 
