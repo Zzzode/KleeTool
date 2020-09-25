@@ -91,8 +91,8 @@ dkms.conf
 **/.idea/
 
 # build files
-build
-bin
+build/
+bin/
 
 # vscode files
 .vscode
