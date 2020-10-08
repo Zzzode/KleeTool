@@ -2,6 +2,7 @@
 // Created by xxxx on xxxx/xx/xx.
 //
 #include "ModifyLLVM.h"
+
 #include <iostream>
 #include <regex>
 
@@ -22,8 +23,8 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
       // cout << "debug: 4.2" << endl;
       // Initializes a temporary variable
       Instruction lLoadInst, rLoadInst;
-      RegName*    rightSource = nullptr;
-      RegName*    leftSource  = nullptr;
+      RegName* rightSource = nullptr;
+      RegName* leftSource = nullptr;
       // Determine if left and right operands exist
       if (thisArithInst->GetReg(2)->GetAttr() != "constant") {
         int j = 1;
@@ -39,9 +40,7 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
             } else
               break;
             // If initialized from a global structure
-            if (loadStr.find("getelementptr") != string::npos) {
-              break;
-            }
+            if (loadStr.find("getelementptr") != string::npos) { break; }
             lLoadInst.InitInst(loadStr);
             auto lInst = static_cast<LoadInst*>(lLoadInst.GetInst());
             leftSource = lInst->GetSource();
@@ -86,11 +85,9 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
             } else
               break;
             // If initialized from a global structure
-            if (loadStr.find("getelementptr") != string::npos) {
-              break;
-            }
+            if (loadStr.find("getelementptr") != string::npos) { break; }
             rLoadInst.InitInst(loadStr);
-            auto rInst  = static_cast<LoadInst*>(rLoadInst.GetInst());
+            auto rInst = static_cast<LoadInst*>(rLoadInst.GetInst());
             rightSource = rInst->GetSource();
             break;
           }
@@ -130,11 +127,11 @@ vector<string> ModifyLLVM::AddArithGlobalSyms(LLVMFunction& _llFunction,
   return _res;
 }
 
-vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&         _llFunction,
-                                         vector<KleeAssume>    _assumes,
+vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction& _llFunction,
+                                         vector<KleeAssume> _assumes,
                                          const vector<string>& _newStr) {
   vector<string> funcLines = _llFunction.GetNewLines();
-  string         inst      = _assumes[0].GetInst();
+  string inst = _assumes[0].GetInst();
   for (int i = 0; i < funcLines.size(); ++i) {
     string funcLine = funcLines[i];
     if (funcLine.find(inst) != string::npos) {
@@ -173,7 +170,7 @@ vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction&         _llFunction,
 //  return vector<string>();
 //}
 
-vector<string> ModifyLLVM::ModifyStoreInst(StoreInst*    _inst,
+vector<string> ModifyLLVM::ModifyStoreInst(StoreInst* _inst,
                                            LLVMFunction& _llFunction) {
   vector<string> funcLines = _llFunction.GetNewLines();
   // _llFunction.Show();

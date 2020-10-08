@@ -28,19 +28,19 @@
 using namespace std;
 
 class RegName {
-public:
+ public:
   RegName() : count(0), hasQuote(false) {}
 
   RegName(string _type,
           string _attr,
           string _name,
-          int    _count,
-          bool   _hasQuote) {
-    type     = std::move(_type);
-    attr     = std::move(_attr);
-    name     = std::move(_name);
+          int _count,
+          bool _hasQuote) {
+    type = std::move(_type);
+    attr = std::move(_attr);
+    name = std::move(_name);
     hasQuote = _hasQuote;
-    count    = _count;
+    count = _count;
   }
 
   /**
@@ -50,14 +50,14 @@ public:
     regRex = R"((\w+)\.(\d+))";
     smatch opRexRes;
 
-    type     = std::move(_type);
-    attr     = std::move(_attr);
-    name     = std::move(_inst);
+    type = std::move(_type);
+    attr = std::move(_attr);
+    name = std::move(_inst);
     hasQuote = _hasQuote;
-    count    = 0;
+    count = 0;
 
     if (regex_search(name, opRexRes, regRex)) {
-      name  = opRexRes[1];
+      name = opRexRes[1];
       count = stoi(opRexRes[2]);
     }
   }
@@ -69,17 +69,16 @@ public:
     smatch regRexRes;
     regRex = R"((@|%)[\\"]*(\w+)\.(\d+)[\\"]*)";
     regex regRex1(R"((@|%)[\\"]*(\w+)[\\"]*)");
-    if (_str.find("\"") != string::npos)
-      hasQuote = true;
+    if (_str.find("\"") != string::npos) hasQuote = true;
 
     type = std::move(_type);
     if (regex_search(_str, regRexRes, regRex)) {
-      attr  = std::move(regRexRes[1].str());
-      name  = std::move(regRexRes[2].str());
+      attr = std::move(regRexRes[1].str());
+      name = std::move(regRexRes[2].str());
       count = stoi(regRexRes[3]);
     } else if (regex_search(_str, regRexRes, regRex1)) {
-      attr  = std::move(regRexRes[1].str());
-      name  = std::move(regRexRes[2].str());
+      attr = std::move(regRexRes[1].str());
+      name = std::move(regRexRes[2].str());
       count = 0;
     }
   }
@@ -91,9 +90,7 @@ public:
   }
 
   string GetName() {
-    if (attr.find("constant") != string::npos) {
-      return name;
-    }
+    if (attr.find("constant") != string::npos) { return name; }
     //    regex nameRex(R"(\d+)");
     //    smatch nameRes;
     //    if (regex_search(name, nameRes, nameRex))
@@ -108,9 +105,7 @@ public:
   }
 
   string GetPureName() {
-    if (attr.find("constant") != string::npos) {
-      return name;
-    }
+    if (attr.find("constant") != string::npos) { return name; }
 
     string _res = name;
     _res += count == 0 ? "" : "." + to_string(count);
@@ -137,43 +132,40 @@ public:
   }
 
   int GetSize() {
-    int    size = 0;
-    regex  sizeRex(R"(i(\d+)[\*]*)");
+    int size = 0;
+    regex sizeRex(R"(i(\d+)[\*]*)");
     smatch res;
-    if (regex_search(type, res, sizeRex)) {
-      size = stoi(res[1].str());
-    }
+    if (regex_search(type, res, sizeRex)) { size = stoi(res[1].str()); }
     return size;
   }
 
-private:
-  regex  regRex;
+ private:
+  regex regRex;
   string type;
   string name;
   string attr;
 
-  int  count;
+  int count;
   bool hasQuote;
 };
 
 class ArithOp {
-public:
+ public:
   ArithOp() : nuw(false), nsw(false) {
-    res  = new RegName;
+    res = new RegName;
     lReg = new RegName;
     rReg = new RegName;
 
-    varRex      = R"((%|@)[\\"]*([\-\w\.]*)[\\"]*)";
+    varRex = R"((%|@)[\\"]*([\-\w\.]*)[\\"]*)";
     constantRex = R"(([\-\w]*))";
   }
 
   void Init(const smatch& instRexRes, bool _nuw, bool _nsw) {
-    nuw           = _nuw;
-    nsw           = _nsw;
-    op            = instRexRes[3].str();
+    nuw = _nuw;
+    nsw = _nsw;
+    op = instRexRes[3].str();
     bool hasQuote = false;
-    if (instRexRes[0].str().find("\"") != string::npos)
-      hasQuote = true;
+    if (instRexRes[0].str().find("\"") != string::npos) hasQuote = true;
     res = new RegName(instRexRes[4], instRexRes[1], instRexRes[2], hasQuote);
 
     smatch leftRes, rightRes;
@@ -190,10 +182,8 @@ public:
 
   string GetString() {
     string _res = res->GetName() + " = " + op;
-    if (nuw)
-      _res += " nuw";
-    if (nsw)
-      _res += " nsw";
+    if (nuw) _res += " nuw";
+    if (nsw) _res += " nsw";
     _res +=
         " " + res->GetType() + " " + lReg->GetName() + ", " + rReg->GetName();
     return _res;
@@ -213,7 +203,7 @@ public:
     return nullptr;
   }
 
-private:
+ private:
   bool nuw;
   bool nsw;
 
@@ -228,22 +218,21 @@ private:
 };
 
 class FuncCall {
-public:
+ public:
   FuncCall() {
-    callRes          = new RegName;
-    callFunc         = new RegName;
-    funcArgsRex      = R"((\w+) [%@\\"]*(\w+[\.\d]*)[\\"]*[, ]*)";
+    callRes = new RegName;
+    callFunc = new RegName;
+    funcArgsRex = R"((\w+) [%@\\"]*(\w+[\.\d]*)[\\"]*[, ]*)";
     funcArgsConstRex = R"((\w+) (\w+)[, ]*)";
-    funcArgsRegRex   = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
+    funcArgsRegRex = R"((\w+) (@|%)[\\"](.*)[\\"][, ]*)";
   }
 
   void Init(const smatch& instRexRes) {
-    string _type    = instRexRes[3].str();
-    bool   hasQuote = false;
-    if (instRexRes[0].str().find("\"") != string::npos)
-      hasQuote = true;
+    string _type = instRexRes[3].str();
+    bool hasQuote = false;
+    if (instRexRes[0].str().find("\"") != string::npos) hasQuote = true;
     callFunc = new RegName(_type, "@", instRexRes[4].str(), hasQuote);
-    callRes  = new RegName(_type, instRexRes[1].str());
+    callRes = new RegName(_type, instRexRes[1].str());
 
     string tmpArgs = instRexRes[5];
     smatch argsRexRes;
@@ -265,8 +254,7 @@ public:
     _res += "call " + callFunc->GetString() + "(";
     for (int i = 0; i < funcArgs.size(); ++i) {
       _res += funcArgs[i].GetString();
-      if (i != funcArgs.size() - 1)
-        _res += ", ";
+      if (i != funcArgs.size() - 1) _res += ", ";
     }
     _res += ")";
     return _res;
@@ -280,7 +268,7 @@ public:
     return funcArgs.size();
   }
 
-private:
+ private:
   regex funcArgsRex;
   regex funcArgsConstRex;
   regex funcArgsRegRex;
@@ -292,7 +280,7 @@ private:
 };
 
 class FuncDefine {
-public:
+ public:
   FuncDefine() {
     func = new RegName;
     funcArgsRex =
@@ -307,23 +295,22 @@ public:
   // define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]* (.*)
   // [@%\"]([\w+\$]*)[\"]*\((.*)\)
   void Init(const smatch& instRexRes) {
-    string _type  = instRexRes[1].str();
-    type          = instRexRes[1].str();
+    string _type = instRexRes[1].str();
+    type = instRexRes[1].str();
     bool hasQuote = false;
-    if (instRexRes[0].str().find("\"") != string::npos)
-      hasQuote = true;
+    if (instRexRes[0].str().find("\"") != string::npos) hasQuote = true;
 
     func = new RegName(_type, "@", instRexRes[2].str(), hasQuote);
 
-    string                tmpArgs = instRexRes[3];
-    vector<string>        argTypes;
-    regex                 reg(", ");
+    string tmpArgs = instRexRes[3];
+    vector<string> argTypes;
+    regex reg(", ");
     sregex_token_iterator pos(tmpArgs.begin(), tmpArgs.end(), reg, -1);
-    decltype(pos)         end;
-    int                   count    = 0;
-    auto                  tmpPos   = pos;
-    bool                  isStruct = false;
-    string                structArg;
+    decltype(pos) end;
+    int count = 0;
+    auto tmpPos = pos;
+    bool isStruct = false;
+    string structArg;
     for (; tmpPos != end; ++tmpPos) {
       string posStr = tmpPos->str();
       if (isStruct) {
@@ -337,10 +324,9 @@ public:
         if (std::count(posStr.begin(), posStr.end(), '\"') == 2)
           argTypes.push_back(posStr);
         else if (std::count(posStr.begin(), posStr.end(), '\"') == 1) {
-          isStruct  = true;
+          isStruct = true;
           structArg = posStr;
-          if (tmpPos == end)
-            argTypes.push_back(structArg);
+          if (tmpPos == end) argTypes.push_back(structArg);
         } else
           argTypes.push_back(posStr);
       }
@@ -373,39 +359,36 @@ public:
     return func;
   }
 
-private:
-  regex  funcArgsRex;
-  regex  funcArgsConstRex;
-  regex  funcArgsRegRex;
-  regex  funcArgsNoVar;
+ private:
+  regex funcArgsRex;
+  regex funcArgsConstRex;
+  regex funcArgsRegRex;
+  regex funcArgsNoVar;
   string type;
 
-  RegName*        func;
+  RegName* func;
   vector<RegName> funcArgs;
 };
 
 class StoreInst {
-public:
+ public:
   StoreInst() {
     storeRex =
         R"(store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*)";
-    dest   = new RegName;
+    dest = new RegName;
     source = new RegName;
   }
 
   void Init(const smatch& instRexRes) {
     bool hasQuote = false;
-    if (instRexRes[0].str().find("\"") != string::npos)
-      hasQuote = true;
+    if (instRexRes[0].str().find("\"") != string::npos) hasQuote = true;
     source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3], hasQuote);
-    dest   = new RegName(instRexRes[4], instRexRes[5], instRexRes[6], hasQuote);
+    dest = new RegName(instRexRes[4], instRexRes[5], instRexRes[6], hasQuote);
   }
 
   void Init(const string& _inst) {
     smatch instRexRes;
-    if (regex_search(_inst, instRexRes, storeRex)) {
-      Init(instRexRes);
-    }
+    if (regex_search(_inst, instRexRes, storeRex)) { Init(instRexRes); }
   }
 
   string GetString() {
@@ -421,18 +404,17 @@ public:
     return source;
   }
 
-private:
-  regex    storeRex;
+ private:
+  regex storeRex;
   RegName* dest;
   RegName* source;
 };
 
 class LoadInst {
-public:
+ public:
   explicit LoadInst(const smatch& _instRexRes) {
     bool hasQuote = false;
-    if (_instRexRes[0].str().find("\"") != string::npos)
-      hasQuote = true;
+    if (_instRexRes[0].str().find("\"") != string::npos) hasQuote = true;
     source =
         new RegName(_instRexRes[4], _instRexRes[5], _instRexRes[6], hasQuote);
     dest =
@@ -453,14 +435,14 @@ public:
     return dest;
   }
 
-private:
-  regex    loadRex;
+ private:
+  regex loadRex;
   RegName* dest;
   RegName* source;
 };
 
 class Symbol {
-public:
+ public:
   Symbol() : num(0) {}
   Symbol(string _str) : num(0), str(std::move(_str)) {}
   Symbol(int _num, string _str) : num(_num), str(std::move(_str)) {}
@@ -477,18 +459,18 @@ public:
     return symbol;
   }
 
-private:
-  int     num;
-  string  str;
+ private:
+  int num;
+  string str;
   RegName symbol;
 };
 
 class Instruction {
-public:
+ public:
   Instruction() {
-    instType  = 0;
-    arithOp   = new ArithOp;
-    funcCall  = new FuncCall;
+    instType = 0;
+    arithOp = new ArithOp;
+    funcCall = new FuncCall;
     storeInst = new StoreInst;
 
     // "%83 = add nuw nsw i64 %75, 1"
@@ -513,10 +495,8 @@ public:
     if (regex_search(_inst, instRexRes, arithInstRex)) {
       // string op = instRexRes[3];
       bool nuw = false, nsw = false;
-      if (_inst.find("nuw") != string::npos)
-        nuw = true;
-      if (_inst.find("nsw") != string::npos)
-        nsw = true;
+      if (_inst.find("nuw") != string::npos) nuw = true;
+      if (_inst.find("nsw") != string::npos) nsw = true;
       arithOp->Init(instRexRes, nuw, nsw);
       instType = 1;
     } else if (regex_search(_inst, instRexRes, funcCallRex)) {
@@ -535,10 +515,8 @@ public:
     smatch instRexRes;
     if (regex_search(_inst, instRexRes, arithInstRex)) {
       bool nuw = false, nsw = false;
-      if (_inst.find("nuw") != string::npos)
-        nuw = true;
-      if (_inst.find("nsw") != string::npos)
-        nsw = true;
+      if (_inst.find("nuw") != string::npos) nuw = true;
+      if (_inst.find("nsw") != string::npos) nsw = true;
       arithOp->Init(instRexRes, nuw, nsw);
       instType = 1;
     } else if (regex_search(_inst, instRexRes, funcCallRex)) {
@@ -593,16 +571,16 @@ public:
     return instType;
   }
 
-private:
+ private:
   // 1:arith 2: func call 3: store
   int instType;
 
-  ArithOp*   arithOp{};
-  FuncCall*  funcCall{};
+  ArithOp* arithOp{};
+  FuncCall* funcCall{};
   StoreInst* storeInst{};
-  LoadInst*  loadInst{};
+  LoadInst* loadInst{};
 
-private:
+ private:
   regex arithInstRex;
   regex funcCallRex;
   regex storeRex;
@@ -610,7 +588,7 @@ private:
 };
 
 class Function {
-public:
+ public:
   Function() : instLength(0), isCall(false), isInit(false), isArith(false) {}
 
   string GetFuncName() {
@@ -663,18 +641,18 @@ public:
     return isArith;
   }
 
-private:
+ private:
   bool isArith;
   bool isCall;
   bool isInit;
   // Order quantity
-  unsigned int        instLength;
-  string              funcName;
+  unsigned int instLength;
+  string funcName;
   vector<Instruction> instructions;
 };
 
 class FuncChain {
-public:
+ public:
   FuncChain() : length(0) {}
 
   unsigned int GetChainLength() const {
@@ -692,9 +670,7 @@ public:
 
   vector<string> GetFuncNames() {
     vector<string> _res;
-    for (auto a : functions) {
-      _res.push_back(a.GetFuncName());
-    }
+    for (auto a : functions) { _res.push_back(a.GetFuncName()); }
     return _res;
   }
 
@@ -704,8 +680,7 @@ public:
 
   Function& ReturnChainStart() {
     Function& _res = functions.front();
-    if (functions.size() == 1)
-      return _res;
+    if (functions.size() == 1) return _res;
     for (int i = 0; i < functions.size(); ++i) {
       // cout << "debug: " << functions[i].IsArith() << functions[i].IsCall() <<
       // functions[i].IsInit() << endl;
@@ -716,13 +691,13 @@ public:
     return functions.back();
   }
 
-private:
-  unsigned int     length;
+ private:
+  unsigned int length;
   vector<Function> functions;
 };
 
 class FuncChains {
-public:
+ public:
   FuncChains() : length(0) {}
 
   unsigned int GetLength() const {
@@ -738,15 +713,15 @@ public:
     return funcChain[_index];
   }
 
-private:
-  unsigned int      length;
+ private:
+  unsigned int length;
   vector<FuncChain> funcChain;
 };
 
 class Controller {
-public:
+ public:
   explicit Controller(string _path) : path(std::move(_path)) {
-    funcChains  = new FuncChains;
+    funcChains = new FuncChains;
     threadCount = 10;
   }
 
@@ -760,7 +735,7 @@ public:
 
   void FunChains(const string& folderName);
 
-  void RunKlee(string        _funcName,
+  void RunKlee(string _funcName,
                const string& _folderName,
                const string& _inst,
                const string& _instIndex,
@@ -830,7 +805,7 @@ public:
                    const string& _inst,
                    const string& _instIndex,
                    const string& _chainIndex) {
-    bool   hasSolution = false;
+    bool hasSolution = false;
     string _path(path + "/" + _folderName);
     string _outFolder(path + "/" + _folderName + "/chain" + _chainIndex);
     string _outPath(_outFolder + "/inst" + _instIndex);
@@ -847,8 +822,7 @@ public:
     // Output instruction
     out.open(_outPath + "/inst.txt");
     // Determine if the file is open
-    if (out.is_open())
-      out << _inst << endl;
+    if (out.is_open()) out << _inst << endl;
     out.close();
 
     vector<string> outFolderNames;
@@ -865,10 +839,8 @@ public:
         }
       }
       for (auto errFile : outWithErr)
-        if (outWithoutErr.count(errFile) != 0)
-          outWithoutErr.erase(errFile);
-      if (!outWithoutErr.empty())
-        hasSolution = true;
+        if (outWithoutErr.count(errFile) != 0) outWithoutErr.erase(errFile);
+      if (!outWithoutErr.empty()) hasSolution = true;
     }
     // Gets all kTest file names
     vector<string> ktestFiles;
@@ -883,10 +855,10 @@ public:
     return hasSolution;
   }
 
-  static bool GetTargetFiles(const string&   _path,
+  static bool GetTargetFiles(const string& _path,
                              vector<string>& _files,
-                             const string&   _name) {
-    DIR*           dir;
+                             const string& _name) {
+    DIR* dir;
     struct dirent* ptr;
 
     if ((dir = opendir(_path.c_str())) == nullptr) {
@@ -900,25 +872,24 @@ public:
         continue;
       else if (ptr->d_type == 4 || ptr->d_type == 8) {
         string name = ptr->d_name;
-        if (name.find(_name) != string::npos)
-          _files.emplace_back(ptr->d_name);
+        if (name.find(_name) != string::npos) _files.emplace_back(ptr->d_name);
       }
     }
     closedir(dir);
     return true;
   }
 
-private:
-  string              path;
-  vector<string>      folderNames;
-  string              jsonName;
+ private:
+  string path;
+  vector<string> folderNames;
+  string jsonName;
   rapidjson::Document document;
-  FuncChains*         funcChains;
+  FuncChains* funcChains;
 
-private:
+ private:
   clock_t start_t{}, end_t{};
-  mutex   threadMutex;
-  int     threadCount;
+  mutex threadMutex;
+  int threadCount;
 };
 
 #endif  // MODIFYLLVM_CONTROLLER_H

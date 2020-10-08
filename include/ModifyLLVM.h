@@ -4,6 +4,8 @@
 #ifndef KLEE_MODIFYLLVM_H
 #define KLEE_MODIFYLLVM_H
 
+#include "Controller.h"
+
 #include <cstring>
 #include <set>
 #include <string>
@@ -11,8 +13,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include "Controller.h"
 
 using namespace std;
 
@@ -25,17 +25,17 @@ class KleeAssume {
   //    %13 = zext i1 %12 to i32
   //    %14 = sext i32 %13 to i64
   //    call void @klee_assume(i64 %14)
-public:
+ public:
   KleeAssume() : count(0) {}
 
   // 1:Add 2:sub
-  KleeAssume(int      _opType,
-             int      _num,
+  KleeAssume(int _opType,
+             int _num,
              RegName* _nameL,
              RegName* _nameR,
-             string   _inst,
-             bool     _first) {
-    inst  = std::move(_inst);
+             string _inst,
+             bool _first) {
+    inst = std::move(_inst);
     count = 1;
     string tmpStr;
     string tmpRes;
@@ -49,8 +49,7 @@ public:
       else if (_opType == 2)
         tmpOp = "icmp ugt " + _nameL->GetString() + ", " + _nameR->GetName();
     } else {
-      if (_opType == 1)
-        tmpOp = "icmp ult " + _nameL->GetString() + ", 0";
+      if (_opType == 1) tmpOp = "icmp ult " + _nameL->GetString() + ", 0";
       else if (_opType == 2)
         tmpOp = "icmp ugt " + _nameL->GetString() + ", 0";
     }
@@ -60,14 +59,14 @@ public:
 
     tmpRes =
         "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
-    tmpOp  = "zext i1 " + tmpStr + " to i32";
+    tmpOp = "zext i1 " + tmpStr + " to i32";
     tmpStr = tmpRes;
     newStr.push_back("  " + tmpRes + " = " + tmpOp);
     count++;
 
     tmpRes =
         "%\"tmpAssume_" + to_string(_num) + ("." + to_string(count)) + "\"";
-    tmpOp  = "sext i32 " + tmpStr + " to i64";
+    tmpOp = "sext i32 " + tmpStr + " to i64";
     tmpStr = tmpRes;
     newStr.push_back("  " + tmpRes + " = " + tmpOp);
 
@@ -75,8 +74,7 @@ public:
   }
 
   void Show() {
-    for (const string& line : newStr)
-      cout << line << endl;
+    for (const string& line : newStr) cout << line << endl;
   }
 
   vector<string> GetNewStr() {
@@ -87,36 +85,36 @@ public:
     return inst;
   }
 
-private:
-  string         inst;
-  int            count;
+ private:
+  string inst;
+  int count;
   vector<string> newStr;
 };
 
 class SymDecl {
-public:
+ public:
   SymDecl() = default;
 
   void Init() {}
 
-private:
+ private:
   pair<int, RegName> syms;
 };
 
 class LLVMFunction {
-public:
+ public:
   LLVMFunction() : startLine(0), endLine(0) {}
 
-  LLVMFunction(int                   _startLine,
-               int                   _endLine,
-               string                _funcName,
+  LLVMFunction(int _startLine,
+               int _endLine,
+               string _funcName,
                const vector<string>& _funcLines) {
     //        symCount = 0;
     startLine = _startLine;
-    endLine   = _endLine;
-    funcName  = std::move(_funcName);
+    endLine = _endLine;
+    funcName = std::move(_funcName);
     funcLines = _funcLines;
-    newLines  = _funcLines;
+    newLines = _funcLines;
   }
 
   vector<string> GetLines() {
@@ -135,12 +133,12 @@ public:
     newLines = std::move(_newLines);
   }
 
-  void AddAssume(int           _opType,
-                 int           _num,
-                 RegName*      _nameL,
-                 RegName*      _nameR,
+  void AddAssume(int _opType,
+                 int _num,
+                 RegName* _nameL,
+                 RegName* _nameR,
                  const string& _inst,
-                 bool          _first) {
+                 bool _first) {
     kleeAssumes.emplace_back(_opType, _num, _nameL, _nameR, _inst, _first);
   }
 
@@ -174,14 +172,11 @@ public:
   }
 
   void ShowAssume() {
-    for (auto kleeAssume : kleeAssumes) {
-      kleeAssume.Show();
-    }
+    for (auto kleeAssume : kleeAssumes) { kleeAssume.Show(); }
   }
 
   void Show() {
-    for (const auto& funcLine : funcLines)
-      cout << funcLine << endl;
+    for (const auto& funcLine : funcLines) cout << funcLine << endl;
   }
 
   /*  void AddGlobalSymDecl(RegName* _reg) {
@@ -196,23 +191,23 @@ public:
       // str = private unnamed_addr constant [2 x i8] c"x\00";
     }*/
 
-public:
+ public:
   //    int symCount;
 
-private:
+ private:
   //    vector<string> globalSymDecls;
-  vector<SymDecl>    symDecls;
+  vector<SymDecl> symDecls;
   vector<KleeAssume> kleeAssumes;
 
-  int            startLine;
-  int            endLine;
-  string         funcName;
+  int startLine;
+  int endLine;
+  string funcName;
   vector<string> newLines;
   vector<string> funcLines;
 };
 
 class LLVMFuncChain {
-public:
+ public:
   LLVMFuncChain() = default;
 
   void Init(int _size) {
@@ -229,20 +224,20 @@ public:
       return res;
     }*/
 
-private:
+ private:
   // 一个函数调用链
   vector<LLVMFunction> LLVMFunctions;
 };
 
 class LLVMFile {
-public:
+ public:
   LLVMFile() : symCount(0) {
-    kleeSymDecl    = "declare void @klee_make_symbolic(i8*, i64, i8*)";
+    kleeSymDecl = "declare void @klee_make_symbolic(i8*, i64, i8*)";
     kleeAssumeDecl = "declare void @klee_assume(i64)";
   };
 
   explicit LLVMFile(const string& _name, const string& _path, int _size) {
-    kleeSymDecl    = "declare void @klee_make_symbolic(i8*, i64, i8*)";
+    kleeSymDecl = "declare void @klee_make_symbolic(i8*, i64, i8*)";
     kleeAssumeDecl = "declare void @klee_assume(i64)";
 
     symCount = 0;
@@ -250,8 +245,7 @@ public:
     filePath = _path;
     llFile.open(_path + "/" + fileName, ios::in);
     // cout << "debug " << _path + "/" + fileName << endl;
-    if (!llFile.is_open())
-      cout << "Invalid llvm file!" << endl;
+    if (!llFile.is_open()) cout << "Invalid llvm file!" << endl;
 
     string tmpLine;
     while (getline(llFile, tmpLine)) {
@@ -286,11 +280,11 @@ public:
    * @return
    */
   LLVMFunction InitFuncLines(const string& _funcName) {
-    int            startLine = 0, endLine = 0;
+    int startLine = 0, endLine = 0;
     vector<string> funcLines;
 
-    bool   inThisFunc = false;
-    regex  funcRex;
+    bool inThisFunc = false;
+    regex funcRex;
     smatch funcRexRes;
     string tmpStr("define .* @" + _funcName + R"(\(.*\))");
     for (int i = 0; i < tmpStr.length(); i++) {
@@ -311,7 +305,7 @@ public:
       if (inThisFunc) {
         funcLines.push_back(fileLine);
         if (fileLine.find('}') != string::npos) {
-          endLine    = i;
+          endLine = i;
           inThisFunc = false;
           break;
         }
@@ -346,8 +340,7 @@ public:
   // Create a new file
   void CreateFile(const string& _newName) {
     ofstream newFile(filePath + "/" + _newName, ios::out);
-    for (const auto& fileLine : fileLines)
-      newFile << fileLine << endl;
+    for (const auto& fileLine : fileLines) newFile << fileLine << endl;
 
     newFile << kleeSymDecl << endl;
     newFile << kleeAssumeDecl << endl;
@@ -391,22 +384,21 @@ public:
   }
 
   inline int FindSize(const string& _type) {
-    int    resSize = 0;
-    regex  typeDef(R"( = type \{ (.*) \})");
+    int resSize = 0;
+    regex typeDef(R"( = type \{ (.*) \})");
     smatch typeDefRes;
     for (auto& fileLine : fileLines) {
-      if (fileLine.find("define ") != string::npos)
-        break;
+      if (fileLine.find("define ") != string::npos) break;
       if (fileLine.find(_type + " = type") != string::npos) {
         if (regex_search(fileLine, typeDefRes, typeDef)) {
           vector<string> argTypes;
-          string         _types(typeDefRes[1].str());
-          regex          structRex(R"((%[\"]*[\w\.\:]*[\"]*))");
-          regex          typeIntDef(R"(i\d+)");
-          regex          typePtrDef(R"([%\"\w\.\:]*\*)");
-          regex          typeArray(R"(\[(\d+) x i(\d+)\])");
-          smatch         structRexRes, intRexRes, ptrRexRes, arrayRexRes;
-          string         tmp;
+          string _types(typeDefRes[1].str());
+          regex structRex(R"((%[\"]*[\w\.\:]*[\"]*))");
+          regex typeIntDef(R"(i\d+)");
+          regex typePtrDef(R"([%\"\w\.\:]*\*)");
+          regex typeArray(R"(\[(\d+) x i(\d+)\])");
+          smatch structRexRes, intRexRes, ptrRexRes, arrayRexRes;
+          string tmp;
           while (!_types.empty()) {
             tmp = _types;
             if (regex_search(_types, ptrRexRes, typePtrDef))
@@ -421,15 +413,12 @@ public:
             int pos = _types.find(argTypes.back());
             if (pos != string::npos)
               _types.erase(pos, argTypes.back().length());
-            if (_types[0] == ',')
-              _types.erase(0, 2);
-            if (_types[0] == ' ')
-              _types.erase(0, 1);
-            if (tmp == _types)
-              return 0;
+            if (_types[0] == ',') _types.erase(0, 2);
+            if (_types[0] == ' ') _types.erase(0, 1);
+            if (tmp == _types) return 0;
           }
           // Read each member
-          regex  typeIntSize(R"(i(\d+))");
+          regex typeIntSize(R"(i(\d+))");
           smatch intSizeRes, typePtrDefRes;
           for (const auto& argType : argTypes) {
             if (regex_match(argType, intSizeRes, typeIntSize))
@@ -449,15 +438,14 @@ public:
   }
 
   int AddLocalSymDecl(LLVMFunction _llvmFunc) {
-    FuncDefine     func;
-    smatch         funcRes;
+    FuncDefine func;
+    smatch funcRes;
     vector<string> funcLines = _llvmFunc.GetNewLines();
-    string         defineStr = funcLines.front();
+    string defineStr = funcLines.front();
     // cout << "debug: " << defineStr << endl;
     regex funcRex(
         R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]*[ dso_local]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\))");
-    if (regex_search(defineStr, funcRes, funcRex))
-      func.Init(funcRes);
+    if (regex_search(defineStr, funcRes, funcRex)) func.Init(funcRes);
     int lineCount = 0;
     for (auto arg : func.GetArgs()) {
       string argType = arg.GetType();
@@ -474,7 +462,7 @@ public:
                       arg.GetCount(), arg.GetHasQuote());
       // A temporary string used for substitution
       vector<string> tmpLines;
-      string         tmpLine;
+      string tmpLine;
       // If the type itself is a pointer
       if (argType.find("*") != string::npos) {
         // Current global symbol value
@@ -488,9 +476,8 @@ public:
         if (_source->GetSize() == 0) {
           // Find the size from the global declaration
           string _type = _source->GetType();
-          int    pos   = _type.find('*');
-          if (pos != string::npos)
-            _type.erase(pos, 1);
+          int pos = _type.find('*');
+          if (pos != string::npos) _type.erase(pos, 1);
           sourceSize = FindSize(_type);
         } else
           sourceSize = _source->GetSize() / 8;
@@ -512,7 +499,7 @@ public:
         RegName* _dest = new RegName(_source->GetType() + "*", "%",
                                      "myDest_" + to_string(symCount), 0, false);
         // 当前全局符号数值
-        int    num = AddLocalSymDecl(_source);
+        int num = AddLocalSymDecl(_source);
         string myAllocInst("  " + _dest->GetName() + " = alloca " +
                            _source->GetType());
         tmpLines.push_back(myAllocInst);
@@ -538,7 +525,7 @@ public:
                          tmpLines.end());
       lineCount += tmpLines.size();
     }
-    int            argsCount = func.GetArgs().size();
+    int argsCount = func.GetArgs().size();
     vector<string> testFunc;
     testFunc.emplace_back("define internal void @klee_test() #0 {");
     // Add the test call
@@ -595,8 +582,7 @@ public:
       }
     }
     if (lineNum == 2) {
-      while (!fileLines[lineNum].empty())
-        lineNum++;
+      while (!fileLines[lineNum].empty()) lineNum++;
     }
     for (const auto& _tmp : localSymDecls) {
       fileLines.insert(fileLines.begin() + (++lineNum), _tmp.first);
@@ -626,13 +612,13 @@ public:
     globalSymbols.clear();
   }
 
-public:
+ public:
   int symCount;
 
-private:
+ private:
   fstream llFile;
 
-private:
+ private:
   unordered_map<string, LLVMFunction> llvmFunctions;
   // Global variables for store and Load
   set<RegName*> globalSymbols;
@@ -658,7 +644,7 @@ private:
 };
 
 class ModifyLLVM {
-public:
+ public:
   ModifyLLVM(const string& _name, const string& _path, int _count) {
     llvmFile = new LLVMFile(_name, _path, _count);
   }
@@ -672,8 +658,8 @@ public:
 
   vector<string> ModifyStoreInst(StoreInst* _inst, LLVMFunction& _llFunction);
 
-  vector<string> ModifyAssumes(LLVMFunction&         _llFunction,
-                               vector<KleeAssume>    _assumes,
+  vector<string> ModifyAssumes(LLVMFunction& _llFunction,
+                               vector<KleeAssume> _assumes,
                                const vector<string>& _newStr);
 
   vector<string> AddArithGlobalSyms(LLVMFunction& _llFunction,
@@ -683,11 +669,11 @@ public:
     return llvmFile;
   }
 
-private:
+ private:
   LLVMFile* llvmFile;
   //    vector<KleeAssume> kleeAssume;
 
-private:
+ private:
   string globalSymDecl;
 };
 

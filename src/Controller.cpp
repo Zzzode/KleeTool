@@ -3,12 +3,13 @@
 //
 
 #include "Controller.h"
+
 #include "ModifyLLVM.h"
 
 #include <unistd.h>
 
 bool Controller::ParseJson(const string& folderName) {
-  string         thisPath = path + "/" + folderName;
+  string thisPath = path + "/" + folderName;
   vector<string> jsonFiles;
   string jsonPath = path + "/" + folderName + "/" + folderName + ".json";
   // if there is no json files
@@ -33,9 +34,8 @@ bool Controller::ParseJson(const string& folderName) {
 
   // read json in binary data
   ostringstream buf;
-  char          ch;
-  while (buf && inFile.get(ch))
-    buf.put(ch);
+  char ch;
+  while (buf && inFile.get(ch)) buf.put(ch);
 
   // file stream point refresh
   inFile.clear();
@@ -49,7 +49,7 @@ bool Controller::ParseJson(const string& folderName) {
 }
 
 bool Controller::GetFiles() {
-  DIR*           dir;
+  DIR* dir;
   struct dirent* ptr;
 
   if ((dir = opendir(path.c_str())) == nullptr) {
@@ -70,7 +70,7 @@ bool Controller::GetFiles() {
 }
 
 bool Controller::GetFiles(const string& _path, vector<string>& _folderNames) {
-  DIR*           dir;
+  DIR* dir;
   struct dirent* ptr;
 
   if ((dir = opendir(_path.c_str())) == nullptr) {
@@ -105,13 +105,12 @@ void Controller::Entry() {
         // start
         start_t = clock();
         // There is a json
-        if (ParseJson(folderName))
-          FunChains(folderName);
+        if (ParseJson(folderName)) FunChains(folderName);
 
         // The end of the timing
         end_t = clock();
         // The output of time
-        double   endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
+        double endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
         ofstream out(path + "/" + folderName + "/time.txt");
         out << "time = " << endtime << " s" << endl;
       }
@@ -126,7 +125,7 @@ void Controller::FunChains(const string& folderName) {
   funcChains->InitChains(document.Size());
   // Added LL file path detection for EOS platform
   vector<string> llFiles;
-  string         llFileName;
+  string llFileName;
   if (!GetTargetFiles(path + "/" + folderName, llFiles, "ll")) {
     cout << "No llvm file\n";
     return;
@@ -147,7 +146,7 @@ void Controller::FunChains(const string& folderName) {
   }
   // Initialize modify LLVM correlation
   ModifyLLVM modifyLlvm(llFileName, path + "/" + folderName, document.Size());
-  LLVMFile*  thisLLVMFile = modifyLlvm.GetLLVMFile();
+  LLVMFile* thisLLVMFile = modifyLlvm.GetLLVMFile();
   cout << "file name = " << thisLLVMFile->GetFileName() << endl;
 
   int chainIndex = 0;
@@ -195,8 +194,8 @@ void Controller::FunChains(const string& folderName) {
         // Klee_assume is used when the instruction is an arithmetic operation
         // global variables need to be symbolic
         if (thisInst.GetType() == 1) {
-          auto   arithInst = static_cast<ArithOp*>(thisInst.GetInst());
-          string instStr   = (inst.MemberBegin() + 1)->value.GetString();
+          auto arithInst = static_cast<ArithOp*>(thisInst.GetInst());
+          string instStr = (inst.MemberBegin() + 1)->value.GetString();
 
           int opType =
               arithInst->GetOp() == "add" || arithInst->GetOp() == "mul" ? 1 :
@@ -253,7 +252,7 @@ void Controller::FunChains(const string& folderName) {
 
     // find out the end func in this call chain
     // cout << "debug: 3.1" << endl;
-    string             endFuncName = thisChain.GetFunction(0).GetFuncName();
+    string endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
         thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
     // cout << "debug: 3.2" << endl;
@@ -270,7 +269,7 @@ void Controller::FunChains(const string& folderName) {
     for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
       vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
                                     assumes.begin() + (3 * i + 3));
-      vector<string>     newStr =
+      vector<string> newStr =
           modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, tmpAssumes[0].GetInst());
 
       bool isWasnRtStack = false;
