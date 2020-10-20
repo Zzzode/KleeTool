@@ -115,8 +115,13 @@ class RegName {
   int GetCount() const {
     return count;
   }
+
   string GetAttr() {
     return attr;
+  }
+
+  void SetType(string _type){
+    type = _type;
   }
 
   string GetType() {

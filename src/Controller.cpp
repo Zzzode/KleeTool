@@ -113,7 +113,8 @@ void Controller::Entry() {
         double endtime = (double)(end_t - start_t) / CLOCKS_PER_SEC;
         ofstream out(path + "/" + folderName + "/time.txt");
         out << "time = " << endtime << " s" << endl;
-      }
+      } else
+        cout << "All Done!" << endl;
     }
   }
 }
@@ -158,7 +159,7 @@ void Controller::FunChains(const string& folderName) {
     FuncChain thisChain = funcChains->GetChain(chainIndex);
     thisChain.InitFunc(funChain.Size());
 
-    cout << "debug: 1" << endl;
+    // cout << "debug: 1" << endl;
     // TODO can locate the call chain in the file here
     // The goal of a location is to reduce IO time but in fact the best way is
     // to get it all in one step LLVMFuncChain thisLLVMChain =
@@ -232,7 +233,7 @@ void Controller::FunChains(const string& folderName) {
         thisFunc.ReturnInst(instNum, thisInst);
         instNum++;
       }
-      cout << "debug: 2" << endl;
+      // cout << "debug: 2" << endl;
       // replace this funclines in llvm ir file
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
@@ -246,12 +247,13 @@ void Controller::FunChains(const string& folderName) {
     // find out start func in this call chain
     Function& startFunc = thisChain.ReturnChainStart();
     // add global symbols and local symbols
-    int argCount = thisLLVMFile->AddLocalSymDecl(
-        thisLLVMFile->InitFuncLines(startFunc.GetFuncName()));
+    LLVMFunction tmpLLFunc =
+        thisLLVMFile->InitFuncLines(startFunc.GetFuncName());
+    int argCount = thisLLVMFile->AddLocalSymDecl(tmpLLFunc);
     // thisLLVMFile->WriteGlobalSymDecl();
 
     // find out the end func in this call chain
-    // cout << "debug: 3.1" << endl;
+    cout << "debug: 3.1" << endl;
     string endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
         thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
@@ -291,25 +293,25 @@ void Controller::FunChains(const string& folderName) {
         // cout << "debug: 6" << endl;
         thisLLVMFile->CreateFile("tmp.ll");
         // call `klee --entry-point=thisFuncName`
-        if (thisLLVMFile->symCount == argCount) {
-          RunKlee(startFunc.GetFuncName(), folderName,
-                  tmpAssumes.front().GetInst(), to_string(i),
-                  to_string(chainIndex));
-          bool hasSolution = ExtractInfo(startFunc.GetFuncName(), folderName,
-                                         tmpAssumes.front().GetInst(),
-                                         to_string(i), to_string(chainIndex));
-          limitInsts++;
-          if (hasSolution) {
-            cout << "Find Solution!" << endl;
-            // return;
-          }
-          if (limitInsts > 1500) {
-            cout << "Limited instructions!" << endl;
-            // return;
-          }
-          cout << "Run klee " << limitInsts << " times" << endl;
-        } else
-          cout << "lack of func args symbol" << endl;
+        // if (thisLLVMFile->symCount == argCount) {
+        RunKlee(startFunc.GetFuncName(), folderName,
+                tmpAssumes.front().GetInst(), to_string(i),
+                to_string(chainIndex));
+        bool hasSolution = ExtractInfo(startFunc.GetFuncName(), folderName,
+                                       tmpAssumes.front().GetInst(),
+                                       to_string(i), to_string(chainIndex));
+        limitInsts++;
+        if (hasSolution) {
+          cout << "Find Solution!" << endl;
+          // return;
+        }
+        if (limitInsts > 1500) {
+          cout << "Limited instructions!" << endl;
+          // return;
+        }
+        cout << "Run klee " << limitInsts << " times" << endl;
+        // } else
+        // cout << "lack of func args symbol" << endl;
       }
       // TODO need to find out constructions and call KLEE
 

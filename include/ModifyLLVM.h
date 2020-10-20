@@ -444,7 +444,7 @@ class LLVMFile {
     string defineStr = funcLines.front();
     // cout << "debug: " << defineStr << endl;
     regex funcRex(
-        R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]*[ dso_local]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\))");
+        R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]*[ dso_local]* (.*) [@%\"]*([\w+\$]*)[\"]*\((.*)\))");
     if (regex_search(defineStr, funcRes, funcRex)) func.Init(funcRes);
     int lineCount = 0;
     for (auto arg : func.GetArgs()) {
@@ -530,22 +530,36 @@ class LLVMFile {
     testFunc.emplace_back("define internal void @klee_test() #0 {");
     // Add the test call
     for (int i = 0; i < 2 * argsCount; i++) {
-      if (i < argsCount)
-        testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
-                           func.GetArgs()[i].GetType());
-      else
-        testFunc.push_back("  %" + to_string(i + 1) + " = load " +
-                           func.GetArgs()[i - argsCount].GetType() + ", " +
-                           func.GetArgs()[i - argsCount].GetType() + "* %" +
-                           to_string(i + 1 - argsCount));
+      if (i < argsCount) {
+        if (func.GetArgs()[i].GetType().empty())
+          testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
+                             func.GetFunc()->GetType());
+        else
+          testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
+                             func.GetArgs()[i].GetType());
+      } else {
+        if (func.GetArgs()[i - argsCount].GetType().empty())
+          testFunc.push_back("  %" + to_string(i + 1) + " = load " +
+                             func.GetFunc()->GetType() + ", " +
+                             func.GetFunc()->GetType() + "* %" +
+                             to_string(i + 1 - argsCount));
+        else
+          testFunc.push_back("  %" + to_string(i + 1) + " = load " +
+                             func.GetArgs()[i - argsCount].GetType() + ", " +
+                             func.GetArgs()[i - argsCount].GetType() + "* %" +
+                             to_string(i + 1 - argsCount));
+      }
     }
     //    string defineLine = funcLines.front();
     if (func.GetFunc()->GetType().find("void") == string::npos) {
       testFunc.push_back("  %" + to_string(2 * argsCount + 1) + " = call " +
                          func.GetFunc()->GetString());
-      testFunc.back() +=
-          "(" + func.GetArgs()[0].GetType() + " %" + to_string(argsCount + 1);
+      testFunc.back() += "(";
+      if (!func.GetArgs().empty() && !func.GetArgs()[0].GetType().empty())
+        testFunc.back() +=
+            func.GetArgs()[0].GetType() + " %" + to_string(argsCount + 1);
       for (int i = 1; i < argsCount; i++) {
+        if (func.GetArgs()[0].GetType().empty()) continue;
         testFunc.back() += ", " + func.GetArgs()[i].GetType() + " %" +
                            to_string(i + argsCount + 1);
       }
