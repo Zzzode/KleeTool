@@ -1,3 +1,7 @@
+#
+# Created by xxxx on xxxx/xx/xx.
+#
+
 #######################################################
 # Minimum CMake version and policies
 #######################################################
@@ -7,7 +11,7 @@ project(KleeTool CXX C)
 #######################################################
 # C++ version
 #######################################################
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #######################################################
@@ -23,8 +27,9 @@ message(STATUS "KleeTool version ${KleeTool_VERSION}")
 #######################################################
 include("${CMAKE_SOURCE_DIR}/cmake/string_to_list.cmake")
 
-
-
+#######################################################
+# Find pThread
+#######################################################
 find_package(Threads)
 
 #######################################################
@@ -41,8 +46,8 @@ foreach (vname ${NEEDED_BOOST_VARS})
     message(STATUS "${vname}: \"${${vname}}\"")
     if (NOT (DEFINED "${vname}"))
         message(FATAL_ERROR "${vname} was not defined")
-    endif()
-endforeach()
+    endif ()
+endforeach ()
 
 #######################################################
 # Find LLVM
@@ -57,17 +62,21 @@ set(NEEDED_LLVM_VARS
         LLVM_INCLUDE_DIRS
         LLVM_LIBRARY_DIRS
         LLVM_TOOLS_BINARY_DIR
-        LLVM_ENABLE_VISIBILITY_INLINES_HIDDEN
+        # LLVM_ENABLE_VISIBILITY_INLINES_HIDDEN
         TARGET_TRIPLE)
 
 foreach (vname ${NEEDED_LLVM_VARS})
     message(STATUS "${vname}: \"${${vname}}\"")
     if (NOT (DEFINED "${vname}"))
         message(FATAL_ERROR "${vname} was not defined")
-    endif()
-endforeach()
+    endif ()
+endforeach ()
 
+llvm_map_components_to_libnames(LLVM_LIBS support)
 
+#######################################################
+# Other opts
+#######################################################
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
@@ -77,4 +86,4 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRC_FILES)
 
 add_executable(KleeTool ${SRC_FILES})
-target_link_libraries(KleeTool ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
+target_link_libraries(KleeTool PUBLIC ${LLVM_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${Boost_LIBRARIES})
