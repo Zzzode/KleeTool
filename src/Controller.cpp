@@ -159,7 +159,6 @@ void Controller::FunChains(const string& folderName) {
     FuncChain thisChain = funcChains->GetChain(chainIndex);
     thisChain.InitFunc(funChain.Size());
 
-    // cout << "debug: 1" << endl;
     // TODO can locate the call chain in the file here
     // The goal of a location is to reduce IO time but in fact the best way is
     // to get it all in one step LLVMFuncChain thisLLVMChain =
@@ -187,16 +186,14 @@ void Controller::FunChains(const string& folderName) {
       for (auto& inst : (funPtr.MemberBegin() + 1)->value.GetArray()) {
         assert(inst.IsObject());
         Instruction thisInst = thisFunc.GetInst(instNum);
-        thisInst.InitInst((inst.MemberBegin() + 1)->value.GetString());
-        // output this instruction
-        //        cout << thisInst.GetType() << ": " << thisInst.GetString() <<
-        //        endl;
+        thisInst.InitInst(inst.MemberBegin()->value.GetString());
+        // cout << thisInst.GetType() << ": " << thisInst.GetString() << endl;
 
         // Klee_assume is used when the instruction is an arithmetic operation
         // global variables need to be symbolic
         if (thisInst.GetType() == 1) {
           auto arithInst = static_cast<ArithOp*>(thisInst.GetInst());
-          string instStr = (inst.MemberBegin() + 1)->value.GetString();
+          string instStr = inst.MemberBegin()->value.GetString();
 
           int opType =
               arithInst->GetOp() == "add" || arithInst->GetOp() == "mul" ? 1 :
@@ -215,25 +212,18 @@ void Controller::FunChains(const string& folderName) {
           thisFunc.SetIsArith(true);
         } else if (thisInst.GetType() == 2) {
           auto callInst = static_cast<FuncCall*>(thisInst.GetInst());
-
-          // TODO we need to make symbolize on call func args (next ver)
-          // TODO we need to make symbolize on this func args (next version)
-
           thisFunc.SetIsCall(true);
         } else if (thisInst.GetType() == 3) {
           auto storeInst = static_cast<StoreInst*>(thisInst.GetInst());
 
-          // thisLLVMFile->AddGlobalSymbols(storeInst->GetDest());
           // symbolic `store global variables`
           thisLLVMFunc.WriteNewLines(
               modifyLlvm.ModifyStoreInst(storeInst, thisLLVMFunc));
-          // cout << "debug: " << thisLLVMFile->symCount << endl;
           thisFunc.SetIsInit(true);
         }
         thisFunc.ReturnInst(instNum, thisInst);
         instNum++;
       }
-      // cout << "debug: 2" << endl;
       // replace this funclines in llvm ir file
       thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
                             thisLLVMFunc.GetNewLines());
@@ -241,86 +231,60 @@ void Controller::FunChains(const string& folderName) {
 
       thisChain.ReturnFunction(funcIndex, thisFunc);
       funcIndex++;
-      // limitInsts += (funPtr.MemberBegin() + 1)->value.GetArray().Size();
     }
-    // cout << "debug: 3" << endl;
+
     // find out start func in this call chain
     Function& startFunc = thisChain.ReturnChainStart();
     // add global symbols and local symbols
-    LLVMFunction tmpLLFunc =
-        thisLLVMFile->InitFuncLines(startFunc.GetFuncName());
-    int argCount = thisLLVMFile->AddLocalSymDecl(tmpLLFunc);
-    // thisLLVMFile->WriteGlobalSymDecl();
+    int argCount = thisLLVMFile->AddLocalSymDecl(
+        thisLLVMFile->InitFuncLines(startFunc.GetFuncName()));
 
     // find out the end func in this call chain
-    cout << "debug: 3.1" << endl;
     string endFuncName = thisChain.GetFunction(0).GetFuncName();
     vector<KleeAssume> assumes =
         thisLLVMFile->GetLLFuncs()[endFuncName].GetAssumes();
-    // cout << "debug: 3.2" << endl;
     LLVMFunction thisLLVMFunc = thisLLVMFile->InitFuncLines(endFuncName);
     thisLLVMFile->SetTmpLines();
-    // cout << "debug: 3.3" << endl;
-    //    vector<string> newStr =
-    //        modifyLlvm.AddArithGlobalSyms(thisLLVMFunc,
-    //        assumes.front().GetInst());
 
-    // thisLLVMFile->WriteGlobalSymDecl();
-    // ! each instruction need to run KLEE once
-    cout << "debug: 4" << endl;
     for (int i = 0; i < (assumes.size() + 1) / 3; i++) {
       vector<KleeAssume> tmpAssumes(assumes.begin() + (3 * i),
                                     assumes.begin() + (3 * i + 3));
       vector<string> newStr =
           modifyLlvm.AddArithGlobalSyms(thisLLVMFunc, tmpAssumes[0].GetInst());
 
-      bool isWasnRtStack = false;
+      vector<string> funcNewLines(
+          modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
+      // write func new lines
+      thisLLVMFunc.WriteNewLines(funcNewLines);
+      thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
+                            thisLLVMFunc.GetNewLines());
+      // inert global symbols' symbolic declaration
+      thisLLVMFile->WriteGlobalSymDecl();
+      thisLLVMFile->CreateFile("tmp.ll");
 
-      if (!newStr.empty())
-        if (newStr.front() == "@wasm_rt_call_stack_depth") {
-          isWasnRtStack = true;
-          cout << "skip @wasm_rt_call_stack_depth!" << endl;
-        }
-
-      if (!isWasnRtStack) {
-        thisLLVMFunc.WriteNewLines(
-            modifyLlvm.ModifyAssumes(thisLLVMFunc, tmpAssumes, newStr));
-        thisLLVMFile->Replace(thisLLVMFunc.StartLine(), thisLLVMFunc.EndLine(),
-                              thisLLVMFunc.GetNewLines());
-        // cout << "debug: 5" << endl;
-        // inert global symbols' symbolic declaration
-        thisLLVMFile->WriteGlobalSymDecl();
-        // cout << "debug: 6" << endl;
-        thisLLVMFile->CreateFile("tmp.ll");
-        // call `klee --entry-point=thisFuncName`
-        // if (thisLLVMFile->symCount == argCount) {
-        RunKlee(startFunc.GetFuncName(), folderName,
-                tmpAssumes.front().GetInst(), to_string(i),
-                to_string(chainIndex));
-        bool hasSolution = ExtractInfo(startFunc.GetFuncName(), folderName,
-                                       tmpAssumes.front().GetInst(),
-                                       to_string(i), to_string(chainIndex));
-        limitInsts++;
-        if (hasSolution) {
-          cout << "Find Solution!" << endl;
-          // return;
-        }
-        if (limitInsts > 1500) {
-          cout << "Limited instructions!" << endl;
-          // return;
-        }
-        cout << "Run klee " << limitInsts << " times" << endl;
-        // } else
-        // cout << "lack of func args symbol" << endl;
+      // call `klee --entry-point=thisFuncName`
+      string _outPath = RunKlee(startFunc.GetFuncName(), folderName, tmpAssumes.front().GetInst(),
+              to_string(i), to_string(chainIndex));
+      bool hasSolution = ExtractInfo(startFunc.GetFuncName(), folderName,
+                                     tmpAssumes.front().GetInst(), to_string(i),
+                                     to_string(chainIndex));
+      limitInsts++;
+      if (hasSolution) {
+        string _cmd = "echo \"Has solution!\" >> " + _outPath + "/result";
+        system(_cmd.c_str());
+        cout << "Find Solution!" << endl;
       }
-      // TODO need to find out constructions and call KLEE
+      if (limitInsts > 1500) {
+        cout << "Limited instructions!" << endl;
+      }
+      cout << "Run klee " << limitInsts << " times" << endl;
 
+      // TODO need to find out constructions and call KLEE
+//      exit(0);
       thisLLVMFunc.Refresh();
       thisLLVMFile->RefreshLines();
-      // cout << "debug: 7" << endl;
-      //       exit(0);
     }
-    //    exit(0);
+
     thisLLVMFile->Refresh();
     chainIndex++;
   }

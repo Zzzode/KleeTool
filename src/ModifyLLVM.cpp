@@ -140,8 +140,10 @@ vector<string> ModifyLLVM::ModifyAssumes(LLVMFunction& _llFunction,
         vector<string> tmp = assume.GetNewStr();
         _res.insert(_res.end(), tmp.begin(), tmp.end());
       }
-      // _llFunction.ShowAssume();
       funcLines.insert(funcLines.begin() + i + 1, _res.begin(), _res.end());
+      funcLine = funcLines[i + _res.size() + 1];
+      // AddAssert(funcLines, funcLine, i + _res.size() + 1);
+      break;
     }
   }
 
@@ -196,4 +198,42 @@ vector<string> ModifyLLVM::ModifyStoreInst(StoreInst* _inst,
   }
   // cout << "debug: " << _llFunction.symCount << endl;
   return funcLines;
+}
+
+void ModifyLLVM::AddAssert(vector<string>& funcLines, string& dest, int line) {
+  /*
+   * format like this
+   * %5 = load i32, i32* %1, align 4
+   * %6 = icmp slt i32 %5, 0
+   * br i1 %6, label %7, label %10
+   *
+   * %8 = load i32, i32* @kleeCount, align 4
+   * %9 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x
+   * i8]* @.str, i32 0, i32 0), i32 %8)
+   * call void @exit(i32 0) #3
+   * unreachable
+   */
+  Instruction _inst;
+  _inst.InitInst(dest);
+  auto storeInst = static_cast<StoreInst*>(_inst.GetInst());
+  RegName* _dest = storeInst->GetDest();
+  vector<string> myAsserts;
+  string tmp(R"(  %myAssert = add )" + _dest->GetType() + " " +
+             _dest->GetName() +", 0");
+  myAsserts.emplace_back(tmp);
+  myAsserts.emplace_back("  %myAssert1 = icmp slt " + _dest->GetPureType() +
+                         " %myAssert, 0");
+  myAsserts.emplace_back("  br i1 %myAssert1, label %then, label %else");
+  myAsserts.emplace_back("then:");
+  myAsserts.emplace_back("  %myAssert2 = load i32, i32* @kleeCount");
+  myAsserts.emplace_back(
+      "  %myAssert3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds "
+      "([4 x i8], [4 x i8]* @.output, i32 0, i32 0))");
+  myAsserts.emplace_back("  call void @exit(i32 0)");
+  myAsserts.emplace_back("  unreachable");
+  myAsserts.emplace_back("else:");
+  funcLines.insert(funcLines.begin() + line + 1, myAsserts.begin(),
+                   myAsserts.end());
+  //  for (auto& m : myAsserts) cout << m << endl;
+  //  exit(0);
 }

@@ -50,9 +50,9 @@ class RegName {
     regRex = R"((\w+)\.(\d+))";
     smatch opRexRes;
 
-    type = std::move(_type);
-    attr = std::move(_attr);
-    name = std::move(_inst);
+    type = _type;
+    attr = _attr;
+    name = _inst;
     hasQuote = _hasQuote;
     count = 0;
 
@@ -115,17 +115,20 @@ class RegName {
   int GetCount() const {
     return count;
   }
-
   string GetAttr() {
     return attr;
   }
 
-  void SetType(string _type){
-    type = _type;
-  }
-
   string GetType() {
     return type;
+  }
+
+  string GetPureType(){
+    string res = type;
+    if(res.find('*') != string::npos)
+      res.pop_back();
+
+    return res;
   }
 
   string GetThisName() {
@@ -384,9 +387,11 @@ class StoreInst {
     source = new RegName;
   }
 
+  // store (\w+) (%|@)[\\"]*([\-\w\.]*)[\\"]*, (\w+\**) (%|@)[\\"]*([\-\w\.]*)[\\"]*
   void Init(const smatch& instRexRes) {
     bool hasQuote = false;
     if (instRexRes[0].str().find("\"") != string::npos) hasQuote = true;
+    string tmp1(instRexRes[1]), tmp2(instRexRes[2]), tmp3(instRexRes[3]);
     source = new RegName(instRexRes[1], instRexRes[2], instRexRes[3], hasQuote);
     dest = new RegName(instRexRes[4], instRexRes[5], instRexRes[6], hasQuote);
   }
@@ -449,10 +454,10 @@ class LoadInst {
 class Symbol {
  public:
   Symbol() : num(0) {}
-  Symbol(string _str) : num(0), str(std::move(_str)) {}
+  explicit Symbol(string _str) : num(0), str(std::move(_str)) {}
   Symbol(int _num, string _str) : num(_num), str(std::move(_str)) {}
 
-  int GetNum() {
+  int GetNum() const {
     return num;
   }
 
@@ -557,22 +562,6 @@ class Instruction {
   }
 
   int GetType() const {
-    /*
-    switch (instType) {
-        case 1:
-            cout << "Arithmetic operation ";
-            break;
-        case 2:
-            cout << "Function call ";
-            break;
-        case 3:
-            cout << "Store operation ";
-            break;
-        default:
-            cout << "Unknown type ";
-            break;
-    }
-    */
     return instType;
   }
 
@@ -740,7 +729,7 @@ class Controller {
 
   void FunChains(const string& folderName);
 
-  void RunKlee(string _funcName,
+  string RunKlee(string _funcName,
                const string& _folderName,
                const string& _inst,
                const string& _instIndex,
@@ -766,22 +755,6 @@ class Controller {
     // Create and execute instructions
     string command(
         "klee \\\n"
-        "  -link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-        "eosLibs/wasm-rt-impl.bc \\\n"
-        //        "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-        //        "eosLibs/intrinsics.bc \\\n"
-        //        "  "
-        //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-        //                   "eosLibs/libnative_c.a \\\n"
-        //                   "  "
-        //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-        //                   "eosLibs/libnative_eosio.a \\\n"
-        //                   "  "
-        //                   "-link-llvm-lib=/home/zode/Dataset/Eos_Solidity_Dataset/"
-        //                   "eosLibs/libnative_rt.a \\\n"
-        //                   "  "
-        //        "--posix-runtime \\\n"
-        //        "  "
         "  -max-time=3min \\\n"
         "  --entry-point=klee_test"
         "  --output-dir=" +
@@ -791,18 +764,8 @@ class Controller {
     cout << endl;
     cout << command << endl;
     system(command.c_str());
-    //    thread runShell([&] { system(command.c_str()); });
-    //    runShell.detach();
-    //    // system(command.c_str());
-    //    for (int i = 0; i < 1000; i++)
-    //      if (!runShell.joinable())
-    //        break;
-    //    for (int j = 0; j < 10000; j++)
-    //      for (int k = 0; k < 10000; k++)
-    //        ;
-    //
-    //    if (runShell.joinable())
-    //      system("ps -ef | grep klee | awk '{print $2}' | xargs kill -9");
+
+    return _outPath;
   }
 
   bool ExtractInfo(const string& _funcName,

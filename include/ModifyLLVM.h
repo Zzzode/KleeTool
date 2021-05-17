@@ -294,10 +294,7 @@ class LLVMFile {
         i++;
       }
     }
-    //    cout << tmpStr << endl;
     funcRex = tmpStr;
-
-    //        cout << "!!!" << _funcName << endl;
 
     for (int i = 0; i < fileLines.size(); ++i) {
       string fileLine = fileLines[i];
@@ -312,7 +309,6 @@ class LLVMFile {
       } else {
         if (regex_search(fileLine, funcRexRes, funcRex)) {
           startLine = i;
-          //  cout << "!!!" << endl;
           funcLines.push_back(fileLine);
           inThisFunc = true;
         }
@@ -442,12 +438,18 @@ class LLVMFile {
     smatch funcRes;
     vector<string> funcLines = _llvmFunc.GetNewLines();
     string defineStr = funcLines.front();
-    // cout << "debug: " << defineStr << endl;
-    regex funcRex(
-        R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]*[ dso_local]* (.*) [@%\"]*([\w+\$]*)[\"]*\((.*)\))");
+#ifdef EOS
+    regex funcRex(R"(define[ linkonce_odr]*[ weak]*[ interal]*[ hidden]*[ dso_local]* (.*) [@%\"]([\w+\$]*)[\"]*\((.*)\))");
+#else
+    regex funcRex(R"(define (\w+) [@|%]\"(\w+)\"\((.*)\))");
+#endif
     if (regex_search(defineStr, funcRes, funcRex)) func.Init(funcRes);
+    else {
+      cout << "Cannot add local sym decl!!" << endl;
+      exit(1);
+    }
     int lineCount = 0;
-    for (auto arg : func.GetArgs()) {
+    for (auto& arg : func.GetArgs()) {
       string argType = arg.GetType();
       string argName = arg.GetName();
       // If the first parameter for EOS, the contract itself, skipped
@@ -520,8 +522,9 @@ class LLVMFile {
         tmpLine += ", i64 0, i64 0))";
         tmpLines.push_back(tmpLine);
       }
+
       if (!tmpLines.empty())
-        funcLines.insert(funcLines.begin() + 1 + lineCount, tmpLines.begin(),
+        funcLines.insert(funcLines.begin() + 3 + lineCount, tmpLines.begin(),
                          tmpLines.end());
       lineCount += tmpLines.size();
     }
@@ -530,36 +533,22 @@ class LLVMFile {
     testFunc.emplace_back("define internal void @klee_test() #0 {");
     // Add the test call
     for (int i = 0; i < 2 * argsCount; i++) {
-      if (i < argsCount) {
-        if (func.GetArgs()[i].GetType().empty())
-          testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
-                             func.GetFunc()->GetType());
-        else
-          testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
-                             func.GetArgs()[i].GetType());
-      } else {
-        if (func.GetArgs()[i - argsCount].GetType().empty())
-          testFunc.push_back("  %" + to_string(i + 1) + " = load " +
-                             func.GetFunc()->GetType() + ", " +
-                             func.GetFunc()->GetType() + "* %" +
-                             to_string(i + 1 - argsCount));
-        else
-          testFunc.push_back("  %" + to_string(i + 1) + " = load " +
-                             func.GetArgs()[i - argsCount].GetType() + ", " +
-                             func.GetArgs()[i - argsCount].GetType() + "* %" +
-                             to_string(i + 1 - argsCount));
-      }
+      if (i < argsCount)
+        testFunc.push_back("  %" + to_string(i + 1) + " = alloca " +
+                           func.GetArgs()[i].GetType());
+      else
+        testFunc.push_back("  %" + to_string(i + 1) + " = load " +
+                           func.GetArgs()[i - argsCount].GetType() + ", " +
+                           func.GetArgs()[i - argsCount].GetType() + "* %" +
+                           to_string(i + 1 - argsCount));
     }
     //    string defineLine = funcLines.front();
     if (func.GetFunc()->GetType().find("void") == string::npos) {
       testFunc.push_back("  %" + to_string(2 * argsCount + 1) + " = call " +
                          func.GetFunc()->GetString());
-      testFunc.back() += "(";
-      if (!func.GetArgs().empty() && !func.GetArgs()[0].GetType().empty())
-        testFunc.back() +=
-            func.GetArgs()[0].GetType() + " %" + to_string(argsCount + 1);
+      testFunc.back() +=
+          "(" + func.GetArgs()[0].GetType() + " %" + to_string(argsCount + 1);
       for (int i = 1; i < argsCount; i++) {
-        if (func.GetArgs()[0].GetType().empty()) continue;
         testFunc.back() += ", " + func.GetArgs()[i].GetType() + " %" +
                            to_string(i + argsCount + 1);
       }
@@ -678,6 +667,8 @@ class ModifyLLVM {
 
   vector<string> AddArithGlobalSyms(LLVMFunction& _llFunction,
                                     const string& _inst);
+
+  void AddAssert(vector<string>& funcLines, string& dest, int line);
 
   LLVMFile* GetLLVMFile() {
     return llvmFile;
